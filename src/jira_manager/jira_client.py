@@ -1,7 +1,7 @@
 """
 JIRA API client implementation.
 """
-from typing import List, Union
+from typing import List, Union, Optional
 from jira import JIRA
 from datetime import datetime
 
@@ -42,12 +42,12 @@ class JIRAClient:
         # Search for issues matching our criteria
         issues = self.jira.search_issues(
             jql,
-            fields='summary,description,status,assignee,fixVersions,duedate'
+            fields='summary,description,status,assignee,fixVersions,duedate,issuetype'
         )
         
         epics = []
         for issue in issues:
-            epic = self._create_epic_from_issue(issue, project_key)
+            epic = self._create_issue_from_response(issue, project_key)
             epics.append(epic)
         
         return epics 
@@ -68,48 +68,12 @@ class JIRAClient:
         jql = f'parent = {epic_key} AND issuetype = Story'
         issues = self.jira.search_issues(
             jql,
-            fields='summary,description,status,assignee,fixVersions,customfield_10016,priority,created,updated,duedate'  # 10016 is story points
+            fields='summary,description,status,assignee,fixVersions,customfield_10016,priority,created,updated,duedate,issuetype'  # 10016 is story points
         )
         
         stories = []
         for issue in issues:
-            # Convert assignee to User if it exists
-            assignee = None
-            if hasattr(issue.fields, 'assignee') and issue.fields.assignee:
-                assignee = User(
-                    account_id=issue.fields.assignee.accountId,
-                    email=getattr(issue.fields.assignee, 'emailAddress', None),
-                    display_name=issue.fields.assignee.displayName,
-                    active=issue.fields.assignee.active
-                )
-            
-            # Convert fix versions
-            fix_versions = []
-            if hasattr(issue.fields, 'fixVersions'):
-                for version in issue.fields.fixVersions:
-                    fix_versions.append(FixVersion(
-                        id=version.id,
-                        name=version.name,
-                        description=getattr(version, 'description', None),
-                        release_date=datetime.strptime(version.releaseDate, '%Y-%m-%d').date()
-                        if hasattr(version, 'releaseDate') else None
-                    ))
-            if issue.fields.duedate:
-                duedate = datetime.strptime(issue.fields.duedate, '%Y-%m-%d').date()
-            else:
-                duedate = None
-            
-            story = Story(
-                project_key=issue.key.split('-')[0],
-                key=issue.key,
-                summary=issue.fields.summary,
-                description=issue.fields.description,
-                status=issue.fields.status.name,
-                assignee=assignee,
-                fix_versions=fix_versions,
-                due_date=duedate,
-            )
-            
+            story = self._create_issue_from_response(issue)
             stories.append(story)
         
         return stories 
@@ -161,54 +125,72 @@ class JIRAClient:
         """
         issue = self.jira.issue(
             epic_key,
-            fields='summary,description,status,assignee,fixVersions,duedate'
+            fields='summary,description,status,assignee,fixVersions,duedate,issuetype'
         )
-        return self._create_epic_from_issue(issue) 
+        return self._create_issue_from_response(issue) 
 
-    def _create_epic_from_issue(self, issue, project_key: str = None) -> Epic:
+    def _create_user_from_assignee(self, assignee_field) -> Optional[User]:
+        """Create a User object from a JIRA assignee field."""
+        if not (hasattr(assignee_field, 'assignee') and assignee_field.assignee):
+            return None
+        
+        return User(
+            account_id=assignee_field.assignee.accountId,
+            email=getattr(assignee_field.assignee, 'emailAddress', None),
+            display_name=assignee_field.assignee.displayName,
+            active=assignee_field.assignee.active
+        )
+
+    def _create_fix_versions_from_field(self, versions_field) -> List[FixVersion]:
+        """Create FixVersion objects from a JIRA versions field."""
+        fix_versions = []
+        if hasattr(versions_field, 'fixVersions'):
+            for version in versions_field.fixVersions:
+                fix_versions.append(FixVersion(
+                    id=version.id,
+                    name=version.name,
+                    description=getattr(version, 'description', None),
+                    release_date=datetime.strptime(version.releaseDate, '%Y-%m-%d').date()
+                    if hasattr(version, 'releaseDate') else None
+                ))
+        return fix_versions
+
+    def _parse_due_date(self, due_date_str: Optional[str]) -> Optional[datetime.date]:
+        """Parse a JIRA due date string into a date object."""
+        if not due_date_str:
+            return None
+        return datetime.strptime(due_date_str, '%Y-%m-%d').date()
+
+    def _create_issue_from_response(self, issue, project_key: str = None) -> Union[Epic, Story]:
         """
-        Create an Epic object from a JIRA issue response.
+        Create an Epic or Story object from a JIRA issue response.
         
         Args:
             issue: JIRA issue object
             project_key (Optional[str]): Project key. If None, extracted from issue key
             
         Returns:
-            Epic: Created Epic object
+            Union[Epic, Story]: Created issue object
         """
-        # Convert assignee to User object if it exists
-        assignee = None
-        if hasattr(issue.fields, 'assignee') and issue.fields.assignee:
-            assignee = User(
-                account_id=issue.fields.assignee.accountId,
-                email=getattr(issue.fields.assignee, 'emailAddress', None),
-                display_name=issue.fields.assignee.displayName,
-                active=issue.fields.assignee.active
-            )
+        assignee = self._create_user_from_assignee(issue.fields)
+        fix_versions = self._create_fix_versions_from_field(issue.fields)
+        due_date = self._parse_due_date(issue.fields.duedate)
         
-        # Convert fix versions to FixVersion objects
-        fix_versions = []
-        if hasattr(issue.fields, 'fixVersions'):
-            for version in issue.fields.fixVersions:
-                fix_versions.append(FixVersion(
-                    id=version.id,
-                    name=version.name,
-                    description=getattr(version, 'description', None),
-                    release_date=datetime.strptime(version.releaseDate, '%Y-%m-%d').date() 
-                    if hasattr(version, 'releaseDate') else None
-                ))
+        common_args = {
+            'project_key': project_key or issue.key.split('-')[0],
+            'key': issue.key,
+            'summary': issue.fields.summary,
+            'description': issue.fields.description,
+            'status': issue.fields.status.name,
+            'assignee': assignee,
+            'fix_versions': fix_versions,
+            'due_date': due_date
+        }
         
-        return Epic(
-            project_key=project_key or issue.key.split('-')[0],
-            key=issue.key,
-            summary=issue.fields.summary,
-            description=issue.fields.description,
-            status=issue.fields.status.name,
-            assignee=assignee,
-            fix_versions=fix_versions,
-            due_date=datetime.strptime(issue.fields.duedate, '%Y-%m-%d').date()
-            if issue.fields.duedate else None
-        ) 
+        if issue.fields.issuetype.name == 'Epic':
+            return Epic(**common_args)
+        else:
+            return Story(**common_args)
 
     def assign_fix_version(self, issue: Union[Epic, Story], fix_version: FixVersion) -> None:
         """
@@ -228,3 +210,39 @@ class JIRAClient:
         
         # Update the issue
         self.jira.issue(issue.key).update(fields=update_fields) 
+
+    def get_issues_for_fix_version(self, fix_version: FixVersion) -> List[Union[Epic, Story]]:
+        """
+        Retrieve all epics and stories with a specific fix version.
+        
+        Args:
+            fix_version (FixVersion): The fix version to search for
+            
+        Returns:
+            List[Union[Epic, Story]]: List of Epic and Story objects with the fix version
+            
+        Raises:
+            JIRAError: If there's an error communicating with JIRA
+        """
+        # Search for issues with the fix version
+        jql = f'fixVersion = {fix_version.id} AND issuetype in (Epic, Story)'
+        issues = self.jira.search_issues(
+            jql,
+            fields='summary,description,status,assignee,fixVersions,issuetype,customfield_10016,priority,created,updated,duedate'
+        )
+        
+        result = []
+        for issue in issues:
+            result.append(self._create_issue_from_response(issue))
+        
+        return result 
+
+    def _get_user_timezone(self, user_id: str) -> Optional[str]:
+        """Get timezone for a JIRA user."""
+        if not user_id:
+            return None
+        try:
+            user = self.jira.user(user_id)
+            return getattr(user, 'timeZone', None)
+        except:
+            return None 

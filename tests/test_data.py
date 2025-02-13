@@ -10,6 +10,11 @@ from jira import JIRA
 from jira_manager.jira_client import JIRAClient
 from jira_manager.models import Epic, User, FixVersion, Story
 
+
+class Name(object):
+    def __init__(self, name):
+        self.name = name
+
 @pytest.fixture
 def mock_jira(monkeypatch):
     """Mock JIRA client instance."""
@@ -54,10 +59,11 @@ def mock_epic_response(mock_assignee, mock_fix_version):
         fields=Mock(
             summary="Test Epic",
             description="Epic description",
-            status=Mock(name="In Progress"),
+            status=Name(name="In Progress"),
             assignee=mock_assignee,
             fixVersions=[mock_fix_version],
-            duedate="2024-12-31"
+            duedate="2024-12-31",
+            issuetype=Name(name="Epic")
         )
     )
 
@@ -94,20 +100,29 @@ def mock_story_fields(mock_assignee, mock_fix_version):
     return Mock(
         summary="Test Story",
         description="Story description",
-        status=Mock(name="To Do"),
+        status=Name(name="To Do"),
         assignee=mock_assignee,
         fixVersions=[mock_fix_version],
         customfield_10016=5.0,  # Story points
-        priority=Mock(name="High"),
+        priority=Name(name="High"),
         duedate="2024-01-02"  # Changed from dueDate to duedate with YYYY-MM-DD format
     )
 
 @pytest.fixture
-def mock_story_response(mock_story_fields):
+def mock_story_response(mock_assignee, mock_fix_version):
     """Create a mock JIRA API response for a story."""
     return Mock(
         key="PROJ-456",
-        fields=mock_story_fields
+        fields=Mock(
+            summary="Test Story",
+            description="Story description",
+            status=Name(name="In Progress"),
+            assignee=mock_assignee,
+            fixVersions=[mock_fix_version],
+            duedate="2024-12-31",
+            issuetype=Name(name="Story"),
+            customfield_10016=5
+        )
     )
 
 @pytest.fixture

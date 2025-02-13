@@ -160,7 +160,8 @@ def print_action(action: Action, indent: str = "") -> None:
         print(f"{indent}  Action: No action needed ({action.reason})")
     elif action.action_type == ActionType.ASSIGN_TO_VERSION:
         print(f"{indent}  Action: Assign to version {action.fix_version.name}, due date is {action.get_due_date()}")
-    
+    elif action.action_type == ActionType.INELIGIBLE:
+        print(f"{indent}  Action: Cannot assign version ({action.reason})")
     if action.comment:
         print(f"{indent}  Comment: {action.comment}")
     print()
@@ -312,6 +313,60 @@ def apply_actions_for_project(project_key: str, label: str) -> None:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
+def get_project_issues_for_next_fix_version(project_key: str) -> None:
+    """
+    List all issues assigned to the next upcoming fix version, sorted by assignee.
+    
+    Args:
+        project_key: The JIRA project key
+    """
+    try:
+        client = get_client()
+        
+        # Get unreleased versions
+        versions = client.get_unreleased_versions(project_key)
+        if not versions:
+            print(f"No unreleased versions found in project {project_key}")
+            return
+            
+        # Find the next version (closest future date)
+        today = datetime.now().date()
+        future_versions = [v for v in versions if v.release_date and v.release_date > today]
+        if not future_versions:
+            print(f"No future versions found in project {project_key}")
+            return
+            
+        next_version = min(future_versions, key=lambda v: v.release_date)
+        print(f"\nIssues for version {next_version.name} (Release date: {next_version.release_date})")
+        print("=" * 120)
+        
+        # Get and sort issues
+        issues = client.get_issues_for_fix_version(next_version)
+        sorted_issues = sorted(
+            issues,
+            key=lambda x: (
+                x.assignee.display_name.lower() if x.assignee else "zzz",  # Unassigned goes to end
+                x.key
+            )
+        )
+        
+        # Print issues
+        for issue in sorted_issues:
+            assignee_name = issue.assignee.display_name if issue.assignee else "<unassigned>"
+            assignee_email = issue.assignee.email if issue.assignee else ""
+            assignee_timezone = client._get_user_timezone(issue.assignee.account_id) if issue.assignee else ""
+            
+            issue_url = f"{jira_config.JIRA_HOST}/browse/{issue.key}"
+            
+            print(f"{assignee_name:<30} {assignee_email:<30} {assignee_timezone:<20} {issue.key:<15} {issue.summary:<50} {issue_url}")
+            
+    except ValueError as e:
+        print(f"Configuration error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
 def main() -> None:
     """Main entry point for the CLI."""
     parser = argparse.ArgumentParser(description="JIRA Project Management Tool")
@@ -360,6 +415,13 @@ def main() -> None:
     apply_project_actions_parser.add_argument("project_key", help="JIRA project key")
     apply_project_actions_parser.add_argument("label", help="Label to filter epics by")
     
+    # Get next version issues command
+    next_version_issues_parser = subparsers.add_parser(
+        "get_project_issues_for_next_fix_version",
+        help="List all issues for the next upcoming fix version"
+    )
+    next_version_issues_parser.add_argument("project_key", help="JIRA project key")
+    
     args = parser.parse_args()
     
     if args.command == "list_epics":
@@ -376,6 +438,8 @@ def main() -> None:
         apply_actions_for_epic(args.epic_key)
     elif args.command == "apply_actions_for_project":
         apply_actions_for_project(args.project_key, args.label)
+    elif args.command == "get_project_issues_for_next_fix_version":
+        get_project_issues_for_next_fix_version(args.project_key)
     else:
         parser.print_help()
         sys.exit(1)

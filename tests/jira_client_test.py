@@ -6,7 +6,7 @@ from datetime import datetime
 import pytest
 
 from test_data import mock_epic, mock_jira, client
-from jira_manager.models import Epic, User, FixVersion
+from jira_manager.models import Epic, User, FixVersion, Story
 
 def test_get_epics_by_label_single_epic(client, mock_jira, mock_epic_response, mock_epic):
     """Test getting epics by label when one epic exists."""
@@ -19,7 +19,7 @@ def test_get_epics_by_label_single_epic(client, mock_jira, mock_epic_response, m
     # Verify search was called with correct JQL
     mock_jira.search_issues.assert_called_once_with(
         'project = PROJ AND issuetype = Epic AND labels = feature',
-        fields='summary,description,status,assignee,fixVersions,duedate'
+        fields='summary,description,status,assignee,fixVersions,duedate,issuetype'
     )
     
     # Verify the response
@@ -37,7 +37,7 @@ def test_get_epics_by_label_no_epics(client, mock_jira):
     # Verify search was called with correct JQL
     mock_jira.search_issues.assert_called_once_with(
         'project = PROJ AND issuetype = Epic AND labels = feature',
-        fields='summary,description,status,assignee,fixVersions,duedate'
+        fields='summary,description,status,assignee,fixVersions,duedate,issuetype'
     )
     
     # Verify empty response
@@ -78,7 +78,7 @@ def test_get_stories_by_epic(client, mock_jira, mock_story_response, mock_story)
     # Verify search was called with correct JQL
     mock_jira.search_issues.assert_called_once_with(
         'parent = PROJ-123 AND issuetype = Story',
-        fields='summary,description,status,assignee,fixVersions,customfield_10016,priority,created,updated,duedate'
+        fields='summary,description,status,assignee,fixVersions,customfield_10016,priority,created,updated,duedate,issuetype'
     )
     
     # Verify the response
@@ -116,3 +116,24 @@ def test_assign_fix_version(client, mock_jira, mock_story, mock_project_version)
     mock_issue.update.assert_called_once_with(
         fields={'fixVersions': [{'id': mock_project_version.id}]}
     )
+
+def test_get_issues_for_fix_version(client, mock_jira, mock_epic_response, mock_story_response, mock_project_version):
+    """Test getting issues with a specific fix version."""
+    # Setup mock response with both epic and story
+    mock_jira.search_issues.return_value = [mock_epic_response, mock_story_response]
+    
+    # Call the method
+    issues = client.get_issues_for_fix_version(mock_project_version)
+    
+    # Verify search was called with correct JQL
+    mock_jira.search_issues.assert_called_once_with(
+        f'fixVersion = {mock_project_version.id} AND issuetype in (Epic, Story)',
+        fields='summary,description,status,assignee,fixVersions,issuetype,customfield_10016,priority,created,updated,duedate'
+    )
+    
+    # Verify the response
+    assert len(issues) == 2
+    assert isinstance(issues[0], Epic)
+    assert isinstance(issues[1], Story)
+    assert issues[0].key == mock_epic_response.key
+    assert issues[1].key == mock_story_response.key
