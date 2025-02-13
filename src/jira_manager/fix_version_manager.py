@@ -126,7 +126,7 @@ class FixVersionManager:
             return False, f"Status is {issue.status}"
         
         # Check for ineligible keywords in name
-        ineligible_keywords = {"spike", "investigation", "research", "tech design"}
+        ineligible_keywords = {"spike", "investigation", "research", "design", "1-pager", "one pager"}
         if any(keyword in issue.summary.lower() for keyword in ineligible_keywords):
             return False, f"Summary contains ineligible keyword: {issue.summary}"
         
