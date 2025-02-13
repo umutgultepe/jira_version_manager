@@ -88,6 +88,16 @@ class FixVersionManager:
                 reason="Due date later than all fix versions",
             )
 
+        is_eligible, ineligibility_reason = self.is_issue_eligible(issue)
+        if not is_eligible:
+            return Action(
+                action_type=ActionType.NO_ACTION,
+                issue=issue,
+                fix_version=None,
+                comment=None,
+                reason=ineligibility_reason,
+            )
+
         return Action(
             action_type=ActionType.ASSIGN_TO_VERSION,
             issue=issue,
@@ -95,3 +105,29 @@ class FixVersionManager:
             comment=None,
             reason=None,
         )
+
+    def is_issue_eligible(self, issue: Union[Epic, Story]) -> tuple[bool, Optional[str]]:
+        """
+        Check if an issue is eligible for fix version assignment.
+        
+        Args:
+            issue: The issue to check
+            
+        Returns:
+            tuple[bool, Optional[str]]: (is_eligible, reason_if_not_eligible)
+        """
+        # Epics are not eligible
+        if isinstance(issue, Epic):
+            return True, "Issue is an Epic"
+        
+        # Check status
+        ineligible_statuses = {"Won't Fix", "Duplicate", "Wontfix"}
+        if issue.status.lower() in {s.lower() for s in ineligible_statuses}:
+            return False, f"Status is {issue.status}"
+        
+        # Check for ineligible keywords in name
+        ineligible_keywords = {"spike", "investigation", "research", "tech design"}
+        if any(keyword in issue.summary.lower() for keyword in ineligible_keywords):
+            return False, f"Summary contains ineligible keyword: {issue.summary}"
+        
+        return True, None

@@ -3,6 +3,7 @@ Tests for fix version manager functionality.
 """
 import pytest
 from jira_manager.fix_version_manager import FixVersionManager, ActionType
+from jira_manager.models import Epic, Story
 
 def test_fix_version_manager_init(mock_project_version):
     """Test FixVersionManager initialization."""
@@ -49,3 +50,46 @@ def test_get_recommended_action_needs_version(epic_needs_version, mock_project_v
     assert action.fix_version == mock_project_version
     assert action.reason is None
     assert action.issue == epic_needs_version 
+
+@pytest.mark.parametrize("issue,expected", [
+    (
+        Epic(
+            project_key="PROJ", 
+            key="PROJ-1", 
+            summary="Test Epic",
+            status="Open"
+        ),
+        (True, "Issue is an Epic")
+    ),
+    (
+        Story(
+            project_key="PROJ",
+            key="PROJ-2",
+            summary="Test Story",
+            status="Won't Fix"
+        ),
+        (False, "Status is Won't Fix")
+    ),
+    (
+        Story(
+            project_key="PROJ",
+            key="PROJ-3",
+            summary="Investigation: Database Performance",
+            status="Open"
+        ),
+        (False, "Summary contains ineligible keyword: Investigation: Database Performance")
+    ),
+    (
+        Story(
+            project_key="PROJ",
+            key="PROJ-4",
+            summary="Normal Story",
+            status="In Progress"
+        ),
+        (True, None)
+    ),
+])
+def test_is_issue_eligible(issue, expected):
+    """Test issue eligibility checks."""
+    manager = FixVersionManager([])  # Empty list is fine for this test
+    assert manager.is_issue_eligible(issue) == expected 
