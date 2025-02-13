@@ -16,5 +16,8 @@ from test_data import (  # noqa
     mock_assignee,
     mock_fix_version,
     mock_epic_response,
-    mock_epic
+    mock_epic,
+    mock_story_fields,
+    mock_story_response,
+    mock_story
 ) 

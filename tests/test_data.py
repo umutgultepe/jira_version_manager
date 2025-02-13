@@ -8,7 +8,7 @@ import pytest
 from jira import JIRA
 
 from jira_manager.jira_client import JIRAClient
-from jira_manager.models import Epic, User, FixVersion
+from jira_manager.models import Epic, User, FixVersion, Story
 
 @pytest.fixture
 def mock_jira(monkeypatch):
@@ -86,4 +86,53 @@ def mock_epic(mock_epic_response):
             for v in mock_epic_response.fields.fixVersions
         ],
         due_date=datetime.strptime(mock_epic_response.fields.duedate, "%Y-%m-%d").date()
+    )
+
+@pytest.fixture
+def mock_story_fields(mock_assignee, mock_fix_version):
+    """Create mock fields for a JIRA story."""
+    return Mock(
+        summary="Test Story",
+        description="Story description",
+        status=Mock(name="To Do"),
+        assignee=mock_assignee,
+        fixVersions=[mock_fix_version],
+        customfield_10016=5.0,  # Story points
+        priority=Mock(name="High"),
+        dueDate="2024-01-02T15:30:00.000+0000"
+    )
+
+@pytest.fixture
+def mock_story_response(mock_story_fields):
+    """Create a mock JIRA API response for a story."""
+    return Mock(
+        key="PROJ-456",
+        fields=mock_story_fields
+    )
+
+@pytest.fixture
+def mock_story(mock_story_response):
+    """Create a Story object matching the mock response."""
+    return Story(
+        project_key="PROJ",
+        key=mock_story_response.key,
+        summary=mock_story_response.fields.summary,
+        description=mock_story_response.fields.description,
+        status=mock_story_response.fields.status.name,
+        assignee=User(
+            account_id=mock_story_response.fields.assignee.accountId,
+            email=mock_story_response.fields.assignee.emailAddress,
+            display_name=mock_story_response.fields.assignee.displayName,
+            active=mock_story_response.fields.assignee.active
+        ),
+        fix_versions=[
+            FixVersion(
+                id=v.id,
+                name=v.name,
+                description=v.description,
+                release_date=datetime.strptime(v.releaseDate, "%Y-%m-%d").date()
+            )
+            for v in mock_story_response.fields.fixVersions
+        ],
+        due_date=datetime.strptime(mock_story_response.fields.dueDate, '%Y-%m-%dT%H:%M:%S.%f%z')
     ) 

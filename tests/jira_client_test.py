@@ -66,3 +66,21 @@ def assert_epic_fields(epic: Epic, project_key: str):
     assert fix_version.name == "v1.0"
     assert fix_version.description == "First Release"
     assert fix_version.release_date == datetime.strptime("2024-12-31", "%Y-%m-%d").date()
+
+def test_get_stories_by_epic(client, mock_jira, mock_story_response, mock_story):
+    """Test getting stories under an epic."""
+    # Setup mock response
+    mock_jira.search_issues.return_value = [mock_story_response]
+    
+    # Call the method
+    stories = client.get_stories_by_epic("PROJ-123")
+    
+    # Verify search was called with correct JQL
+    mock_jira.search_issues.assert_called_once_with(
+        'parent = PROJ-123 AND issuetype = Story',
+        fields='summary,description,status,assignee,fixVersions,customfield_10016,priority,created,updated'
+    )
+    
+    # Verify the response
+    assert len(stories) == 1
+    assert stories[0] == mock_story

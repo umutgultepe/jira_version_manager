@@ -5,7 +5,7 @@ from typing import List
 from jira import JIRA
 from datetime import datetime
 
-from .models import Epic, User, FixVersion
+from .models import Epic, Story, User, FixVersion
 
 class JIRAClient:
     def __init__(self, server_url: str, username: str, api_token: str):
@@ -85,3 +85,62 @@ class JIRAClient:
             epics.append(epic)
         
         return epics 
+
+    def get_stories_by_epic(self, epic_key: str) -> List[Story]:
+        """
+        Retrieve all stories under a specific epic.
+        
+        Args:
+            epic_key (str): The epic's key (e.g., 'PROJ-123')
+            
+        Returns:
+            List[Story]: List of Story objects under the epic
+            
+        Raises:
+            JIRAError: If there's an error communicating with JIRA
+        """
+        jql = f'parent = {epic_key} AND issuetype = Story'
+        issues = self.jira.search_issues(
+            jql,
+            fields='summary,description,status,assignee,fixVersions,customfield_10016,priority,created,updated'  # 10016 is story points
+        )
+        
+        stories = []
+        for issue in issues:
+            # Convert assignee to User if it exists
+            assignee = None
+            if hasattr(issue.fields, 'assignee') and issue.fields.assignee:
+                assignee = User(
+                    account_id=issue.fields.assignee.accountId,
+                    email=getattr(issue.fields.assignee, 'emailAddress', None),
+                    display_name=issue.fields.assignee.displayName,
+                    active=issue.fields.assignee.active
+                )
+            
+            # Convert fix versions
+            fix_versions = []
+            if hasattr(issue.fields, 'fixVersions'):
+                for version in issue.fields.fixVersions:
+                    fix_versions.append(FixVersion(
+                        id=version.id,
+                        name=version.name,
+                        description=getattr(version, 'description', None),
+                        release_date=datetime.strptime(version.releaseDate, '%Y-%m-%d').date()
+                        if hasattr(version, 'releaseDate') else None
+                    ))
+            
+            story = Story(
+                project_key=issue.key.split('-')[0],
+                key=issue.key,
+                summary=issue.fields.summary,
+                description=issue.fields.description,
+                status=issue.fields.status.name,
+                assignee=assignee,
+                fix_versions=fix_versions,
+                due_date=datetime.strptime(issue.fields.dueDate, '%Y-%m-%dT%H:%M:%S.%f%z')
+                if hasattr(issue.fields, 'dueDate') else None
+            )
+            
+            stories.append(story)
+        
+        return stories 
