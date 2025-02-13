@@ -1,0 +1,3 @@
+"""
+JIRA Manager configuration package.
+""" 

@@ -13,6 +13,11 @@ setup(
             "pytest>=7.3.1",
         ],
     },
+    entry_points={
+        "console_scripts": [
+            "jira-manager=jira_manager.main:main",
+        ],
+    },
     author="Your Name",
     author_email="your.email@example.com",
     description="A tool to manage JIRA projects",
