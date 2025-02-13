@@ -8,10 +8,10 @@ import pytest
 from test_data import mock_epic, mock_jira, client
 from jira_manager.models import Epic, User, FixVersion
 
-def test_get_epics_by_label_single_epic(client, mock_jira, mock_epic):
+def test_get_epics_by_label_single_epic(client, mock_jira, mock_epic_response, mock_epic):
     """Test getting epics by label when one epic exists."""
     # Setup mock response
-    mock_jira.search_issues.return_value = [mock_epic]
+    mock_jira.search_issues.return_value = [mock_epic_response]
     
     # Call the method
     epics = client.get_epics_by_label("PROJ", "feature")
@@ -24,12 +24,8 @@ def test_get_epics_by_label_single_epic(client, mock_jira, mock_epic):
     
     # Verify the response
     assert len(epics) == 1
-    epic = epics[0]
-    
-    # Verify Epic fields
-    assert isinstance(epic, Epic)
-    assert_epic_fields(epic, "PROJ")
-    
+    assert epics[0] == mock_epic
+
 def test_get_epics_by_label_no_epics(client, mock_jira):
     """Test getting epics by label when no epics exist."""
     # Setup mock response

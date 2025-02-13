@@ -8,6 +8,7 @@ import pytest
 from jira import JIRA
 
 from jira_manager.jira_client import JIRAClient
+from jira_manager.models import Epic, User, FixVersion
 
 @pytest.fixture
 def mock_jira(monkeypatch):
@@ -46,21 +47,43 @@ def mock_fix_version():
     )
 
 @pytest.fixture
-def mock_epic_fields(mock_assignee, mock_fix_version):
-    """Create mock fields for a JIRA epic."""
+def mock_epic_response(mock_assignee, mock_fix_version):
+    """Create a mock JIRA API response for an epic."""
     return Mock(
-        summary="Test Epic",
-        description="Epic description",
-        status=Mock(name="In Progress"),
-        assignee=mock_assignee,
-        fixVersions=[mock_fix_version],
-        duedate="2024-12-31"
+        key="PROJ-123",
+        fields=Mock(
+            summary="Test Epic",
+            description="Epic description",
+            status=Mock(name="In Progress"),
+            assignee=mock_assignee,
+            fixVersions=[mock_fix_version],
+            duedate="2024-12-31"
+        )
     )
 
 @pytest.fixture
-def mock_epic(mock_epic_fields):
-    """Create a complete mock JIRA epic."""
-    return Mock(
-        key="PROJ-123",
-        fields=mock_epic_fields
+def mock_epic(mock_epic_response):
+    """Create an Epic object matching the mock response."""
+    return Epic(
+        project_key="PROJ",
+        key=mock_epic_response.key,
+        summary=mock_epic_response.fields.summary,
+        description=mock_epic_response.fields.description,
+        status=mock_epic_response.fields.status.name,
+        assignee=User(
+            account_id=mock_epic_response.fields.assignee.accountId,
+            email=mock_epic_response.fields.assignee.emailAddress,
+            display_name=mock_epic_response.fields.assignee.displayName,
+            active=mock_epic_response.fields.assignee.active
+        ),
+        fix_versions=[
+            FixVersion(
+                id=v.id,
+                name=v.name,
+                description=v.description,
+                release_date=datetime.strptime(v.releaseDate, "%Y-%m-%d").date()
+            )
+            for v in mock_epic_response.fields.fixVersions
+        ],
+        due_date=datetime.strptime(mock_epic_response.fields.duedate, "%Y-%m-%d").date()
     ) 
