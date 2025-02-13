@@ -78,7 +78,7 @@ def test_get_stories_by_epic(client, mock_jira, mock_story_response, mock_story)
     # Verify search was called with correct JQL
     mock_jira.search_issues.assert_called_once_with(
         'parent = PROJ-123 AND issuetype = Story',
-        fields='summary,description,status,assignee,fixVersions,customfield_10016,priority,created,updated'
+        fields='summary,description,status,assignee,fixVersions,customfield_10016,priority,created,updated,duedate'
     )
     
     # Verify the response

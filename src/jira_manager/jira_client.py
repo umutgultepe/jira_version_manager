@@ -102,7 +102,7 @@ class JIRAClient:
         jql = f'parent = {epic_key} AND issuetype = Story'
         issues = self.jira.search_issues(
             jql,
-            fields='summary,description,status,assignee,fixVersions,customfield_10016,priority,created,updated'  # 10016 is story points
+            fields='summary,description,status,assignee,fixVersions,customfield_10016,priority,created,updated,duedate'  # 10016 is story points
         )
         
         stories = []
@@ -128,6 +128,10 @@ class JIRAClient:
                         release_date=datetime.strptime(version.releaseDate, '%Y-%m-%d').date()
                         if hasattr(version, 'releaseDate') else None
                     ))
+            if issue.fields.duedate:
+                duedate = datetime.strptime(issue.fields.duedate, '%Y-%m-%d')
+            else:
+                duedate = None
             
             story = Story(
                 project_key=issue.key.split('-')[0],
@@ -137,8 +141,7 @@ class JIRAClient:
                 status=issue.fields.status.name,
                 assignee=assignee,
                 fix_versions=fix_versions,
-                due_date=datetime.strptime(issue.fields.dueDate, '%Y-%m-%dT%H:%M:%S.%f%z')
-                if hasattr(issue.fields, 'dueDate') else None
+                due_date=duedate,
             )
             
             stories.append(story)

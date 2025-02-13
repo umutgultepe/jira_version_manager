@@ -99,7 +99,7 @@ def mock_story_fields(mock_assignee, mock_fix_version):
         fixVersions=[mock_fix_version],
         customfield_10016=5.0,  # Story points
         priority=Mock(name="High"),
-        dueDate="2024-01-02T15:30:00.000+0000"
+        duedate="2024-01-02"  # Changed from dueDate to duedate with YYYY-MM-DD format
     )
 
 @pytest.fixture
@@ -134,5 +134,5 @@ def mock_story(mock_story_response):
             )
             for v in mock_story_response.fields.fixVersions
         ],
-        due_date=datetime.strptime(mock_story_response.fields.dueDate, '%Y-%m-%dT%H:%M:%S.%f%z')
+        due_date=datetime.strptime(mock_story_response.fields.duedate, '%Y-%m-%d')
     ) 
