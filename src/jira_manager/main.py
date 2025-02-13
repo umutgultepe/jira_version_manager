@@ -7,6 +7,8 @@ import sys
 from datetime import datetime
 from .jira_client import JIRAClient
 from .config import jira_config
+from .fix_version_manager import FixVersionManager, Action, ActionType
+from .models import Epic
 
 def get_client(host: Optional[str] = None, 
                username: Optional[str] = None, 
@@ -117,6 +119,64 @@ def list_versions(project_key: str) -> None:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
+def list_recommended_actions_for_epic(epic_key: str) -> None:
+    """List recommended fix version actions for an epic and its stories."""
+    try:
+        client = get_client()
+        
+        # Get the epic's project key from the epic key (e.g., "PROJ" from "PROJ-123")
+        project_key = epic_key.split('-')[0]
+        
+        # Get unreleased versions for the project
+        versions = client.get_unreleased_versions(project_key)
+        if not versions:
+            print(f"No unreleased versions found in project {project_key}")
+            return
+            
+        # Create version manager
+        version_manager = FixVersionManager(versions)
+        
+        # Get epic and its stories
+        stories = client.get_stories_by_epic(epic_key)
+        
+        print(f"\nRecommended fix version actions for epic {epic_key} and its stories:")
+        print("-" * 70)
+        
+        # Get recommendation for epic
+        epic = client.get_epic(epic_key)  # We need to add this method to JIRAClient
+        epic_action = version_manager.get_recommended_action(epic)
+        
+        if stories:
+            print("\nStories:")
+            print("-" * 70)
+            for story in stories:
+                story_action = version_manager.get_recommended_action(story)
+                print_action(story_action)
+        else:
+            print("\nNo stories found under this epic")
+            
+    except ValueError as e:
+        print(f"Configuration error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+def print_action(action: Action) -> None:
+    """Print a recommended action in a formatted way."""
+    issue_type = "Epic" if isinstance(action.issue, Epic) else "Story"
+    print(f"{issue_type} {action.issue.key}: {action.issue.summary}")
+    
+    if action.action_type == ActionType.NO_ACTION:
+        print(f"  Action: No action needed ({action.reason})")
+    elif action.action_type == ActionType.ASSIGN_TO_VERSION:
+        print(f"  Action: Assign to version {action.fix_version.name} "
+              f"(Release: {action.fix_version.release_date.strftime('%Y-%m-%d')})")
+    
+    if action.comment:
+        print(f"  Comment: {action.comment}")
+    print()
+
 def main() -> None:
     """Main entry point for the CLI."""
     parser = argparse.ArgumentParser(description="JIRA Project Management Tool")
@@ -135,6 +195,13 @@ def main() -> None:
     list_versions_parser = subparsers.add_parser("list_versions", help="List unreleased versions in a project")
     list_versions_parser.add_argument("project_key", help="JIRA project key")
     
+    # List recommended actions command
+    list_actions_parser = subparsers.add_parser(
+        "list_actions_for_epic", 
+        help="List recommended fix version actions for an epic and its stories"
+    )
+    list_actions_parser.add_argument("epic_key", help="Epic key (e.g., PROJ-123)")
+    
     args = parser.parse_args()
     
     if args.command == "list_epics":
@@ -143,6 +210,8 @@ def main() -> None:
         list_stories(args.epic_key)
     elif args.command == "list_versions":
         list_versions(args.project_key)
+    elif args.command == "list_actions_for_epic":
+        list_recommended_actions_for_epic(args.epic_key)
     else:
         parser.print_help()
         sys.exit(1)

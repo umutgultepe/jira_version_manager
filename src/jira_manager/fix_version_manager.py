@@ -44,7 +44,7 @@ class FixVersionManager:
         """
         if not issue.due_date:
             return None
-            
+
         # Filter versions with release dates after issue due date
         valid_versions = [v for v in self.fix_versions 
                          if v.release_date and v.release_date > issue.due_date]

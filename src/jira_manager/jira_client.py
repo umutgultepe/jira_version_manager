@@ -47,41 +47,7 @@ class JIRAClient:
         
         epics = []
         for issue in issues:
-            # Convert assignee to User object if it exists
-            assignee = None
-            if hasattr(issue.fields, 'assignee') and issue.fields.assignee:
-                assignee = User(
-                    account_id=issue.fields.assignee.accountId,
-                    email=getattr(issue.fields.assignee, 'emailAddress', None),
-                    display_name=issue.fields.assignee.displayName,
-                    active=issue.fields.assignee.active
-                )
-            
-            # Convert fix versions to FixVersion objects
-            fix_versions = []
-            if hasattr(issue.fields, 'fixVersions'):
-                for version in issue.fields.fixVersions:
-                    fix_versions.append(FixVersion(
-                        id=version.id,
-                        name=version.name,
-                        description=getattr(version, 'description', None),
-                        release_date=datetime.strptime(version.releaseDate, '%Y-%m-%d').date() 
-                        if hasattr(version, 'releaseDate') else None
-                    ))
-            
-            # Create Epic object
-            epic = Epic(
-                project_key=project_key,
-                key=issue.key,
-                summary=issue.fields.summary,
-                description=issue.fields.description,
-                status=issue.fields.status.name,
-                assignee=assignee,
-                fix_versions=fix_versions,
-                due_date=datetime.strptime(issue.fields.duedate, '%Y-%m-%d').date()
-                if issue.fields.duedate else None
-            )
-            
+            epic = self._create_epic_from_issue(issue, project_key)
             epics.append(epic)
         
         return epics 
@@ -129,7 +95,7 @@ class JIRAClient:
                         if hasattr(version, 'releaseDate') else None
                     ))
             if issue.fields.duedate:
-                duedate = datetime.strptime(issue.fields.duedate, '%Y-%m-%d')
+                duedate = datetime.strptime(issue.fields.duedate, '%Y-%m-%d').date()
             else:
                 duedate = None
             
@@ -164,15 +130,11 @@ class JIRAClient:
         versions = self.jira.project_versions(project_key)
         
         unreleased_versions = []
-        print(versions)
         for version in versions:
             # Skip if version is released or archived
             if getattr(version, 'released', False) or getattr(version, 'archived', False):
                 continue
 
-            print(version)
-            print(version.name)
-            
             fix_version = FixVersion(
                 id=version.id,
                 name=version.name,
@@ -183,3 +145,67 @@ class JIRAClient:
             unreleased_versions.append(fix_version)
         
         return unreleased_versions 
+
+    def get_epic(self, epic_key: str) -> Epic:
+        """
+        Retrieve a specific epic by its key.
+        
+        Args:
+            epic_key (str): The epic's key (e.g., 'PROJ-123')
+            
+        Returns:
+            Epic: The Epic object
+            
+        Raises:
+            JIRAError: If there's an error communicating with JIRA
+        """
+        issue = self.jira.issue(
+            epic_key,
+            fields='summary,description,status,assignee,fixVersions,duedate'
+        )
+        return self._create_epic_from_issue(issue) 
+
+    def _create_epic_from_issue(self, issue, project_key: str = None) -> Epic:
+        """
+        Create an Epic object from a JIRA issue response.
+        
+        Args:
+            issue: JIRA issue object
+            project_key (Optional[str]): Project key. If None, extracted from issue key
+            
+        Returns:
+            Epic: Created Epic object
+        """
+        # Convert assignee to User object if it exists
+        assignee = None
+        if hasattr(issue.fields, 'assignee') and issue.fields.assignee:
+            assignee = User(
+                account_id=issue.fields.assignee.accountId,
+                email=getattr(issue.fields.assignee, 'emailAddress', None),
+                display_name=issue.fields.assignee.displayName,
+                active=issue.fields.assignee.active
+            )
+        
+        # Convert fix versions to FixVersion objects
+        fix_versions = []
+        if hasattr(issue.fields, 'fixVersions'):
+            for version in issue.fields.fixVersions:
+                fix_versions.append(FixVersion(
+                    id=version.id,
+                    name=version.name,
+                    description=getattr(version, 'description', None),
+                    release_date=datetime.strptime(version.releaseDate, '%Y-%m-%d').date() 
+                    if hasattr(version, 'releaseDate') else None
+                ))
+        
+        return Epic(
+            project_key=project_key or issue.key.split('-')[0],
+            key=issue.key,
+            summary=issue.fields.summary,
+            description=issue.fields.description,
+            status=issue.fields.status.name,
+            assignee=assignee,
+            fix_versions=fix_versions,
+            due_date=datetime.strptime(issue.fields.duedate, '%Y-%m-%d').date()
+            if issue.fields.duedate else None
+        ) 

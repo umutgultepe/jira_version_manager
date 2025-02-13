@@ -134,7 +134,7 @@ def mock_story(mock_story_response):
             )
             for v in mock_story_response.fields.fixVersions
         ],
-        due_date=datetime.strptime(mock_story_response.fields.duedate, '%Y-%m-%d')
+        due_date=datetime.strptime(mock_story_response.fields.duedate, '%Y-%m-%d').date()
     )
 
 @pytest.fixture
