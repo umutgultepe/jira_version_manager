@@ -4,6 +4,7 @@ Main module for JIRA Manager.
 from typing import Optional
 import argparse
 import sys
+from datetime import datetime
 from .jira_client import JIRAClient
 from .config import jira_config
 
@@ -70,20 +71,49 @@ def list_epics(project_key: str, label: str) -> None:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
+def list_stories(epic_key: str) -> None:
+    """List all stories under an epic with their due dates."""
+    try:
+        client = get_client()
+        stories = client.get_stories_by_epic(epic_key)
+        
+        if not stories:
+            print(f"No stories found under epic {epic_key}")
+            return
+            
+        print(f"\nStories under epic {epic_key}:")
+        print("-" * 50)
+        for story in stories:
+            due_date = story.due_date.strftime("%Y-%m-%d") if story.due_date else "No due date"
+            print(f"{story.key}: {story.summary} (Due: {due_date})")
+            
+    except ValueError as e:
+        print(f"Configuration error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
 def main() -> None:
     """Main entry point for the CLI."""
     parser = argparse.ArgumentParser(description="JIRA Project Management Tool")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
     
     # List epics command
-    list_parser = subparsers.add_parser("list_epics", help="List epics by project and label")
-    list_parser.add_argument("project_key", help="JIRA project key")
-    list_parser.add_argument("label", help="Label to filter epics by")
+    list_epics_parser = subparsers.add_parser("list_epics", help="List epics by project and label")
+    list_epics_parser.add_argument("project_key", help="JIRA project key")
+    list_epics_parser.add_argument("label", help="Label to filter epics by")
+    
+    # List stories command
+    list_stories_parser = subparsers.add_parser("list_stories", help="List stories under an epic")
+    list_stories_parser.add_argument("epic_key", help="Epic key (e.g., PROJ-123)")
     
     args = parser.parse_args()
     
     if args.command == "list_epics":
         list_epics(args.project_key, args.label)
+    elif args.command == "list_stories":
+        list_stories(args.epic_key)
     else:
         parser.print_help()
         sys.exit(1)
