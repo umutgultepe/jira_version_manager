@@ -1,6 +1,7 @@
 """
 Manager class for handling JIRA fix versions.
 """
+import datetime
 from typing import List, Optional, Union
 from .models import FixVersion
 from .models import Epic, Story
@@ -19,6 +20,9 @@ class Action:
     comment: Optional[str]
     issue: Union[Epic, Story]
     reason: str
+
+    def get_due_date(self) -> datetime.date:
+        return self.issue.due_date
 
 class FixVersionManager:
     """Manages operations on JIRA fix versions."""

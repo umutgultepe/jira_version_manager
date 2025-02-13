@@ -170,8 +170,7 @@ def print_action(action: Action) -> None:
     if action.action_type == ActionType.NO_ACTION:
         print(f"  Action: No action needed ({action.reason})")
     elif action.action_type == ActionType.ASSIGN_TO_VERSION:
-        print(f"  Action: Assign to version {action.fix_version.name} "
-              f"(Release: {action.fix_version.release_date.strftime('%Y-%m-%d')})")
+        print(f"  Action: Assign to version {action.fix_version.name} , due date is {action.get_due_date()}")
     
     if action.comment:
         print(f"  Comment: {action.comment}")
