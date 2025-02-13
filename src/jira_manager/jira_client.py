@@ -1,0 +1,87 @@
+"""
+JIRA API client implementation.
+"""
+from typing import List
+from jira import JIRA
+from datetime import datetime
+
+from .models import Epic, User, FixVersion
+
+class JIRAClient:
+    def __init__(self, server_url: str, username: str, api_token: str):
+        """
+        Initialize JIRA client with authentication details.
+        
+        Args:
+            server_url (str): JIRA server URL (e.g., 'https://your-domain.atlassian.net')
+            username (str): JIRA username (usually email)
+            api_token (str): JIRA API token
+        """
+        self.jira = JIRA(
+            server=server_url,
+            basic_auth=(username, api_token)
+        )
+
+    def get_epics_by_label(self, project_key: str, label: str) -> List[Epic]:
+        """
+        Retrieve all epics in a project that have a specific label.
+        
+        Args:
+            project_key (str): The project key (e.g., 'PROJ')
+            label (str): The label to filter by
+            
+        Returns:
+            List[Epic]: List of Epic objects matching the criteria
+            
+        Raises:
+            JIRAError: If there's an error communicating with JIRA
+        """
+        # Construct JQL query to find epics with the given label in the project
+        jql = f'project = {project_key} AND issuetype = Epic AND labels = {label}'
+        
+        # Search for issues matching our criteria
+        issues = self.jira.search_issues(
+            jql,
+            fields='summary,description,status,assignee,fixVersions,duedate'
+        )
+        
+        epics = []
+        for issue in issues:
+            # Convert assignee to User object if it exists
+            assignee = None
+            if hasattr(issue.fields, 'assignee') and issue.fields.assignee:
+                assignee = User(
+                    account_id=issue.fields.assignee.accountId,
+                    email=getattr(issue.fields.assignee, 'emailAddress', None),
+                    display_name=issue.fields.assignee.displayName,
+                    active=issue.fields.assignee.active
+                )
+            
+            # Convert fix versions to FixVersion objects
+            fix_versions = []
+            if hasattr(issue.fields, 'fixVersions'):
+                for version in issue.fields.fixVersions:
+                    fix_versions.append(FixVersion(
+                        id=version.id,
+                        name=version.name,
+                        description=getattr(version, 'description', None),
+                        release_date=datetime.strptime(version.releaseDate, '%Y-%m-%d').date() 
+                        if hasattr(version, 'releaseDate') else None
+                    ))
+            
+            # Create Epic object
+            epic = Epic(
+                project_key=project_key,
+                key=issue.key,
+                summary=issue.fields.summary,
+                description=issue.fields.description,
+                status=issue.fields.status.name,
+                assignee=assignee,
+                fix_versions=fix_versions,
+                due_date=datetime.strptime(issue.fields.duedate, '%Y-%m-%d').date()
+                if issue.fields.duedate else None
+            )
+            
+            epics.append(epic)
+        
+        return epics 
