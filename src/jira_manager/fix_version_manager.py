@@ -13,6 +13,7 @@ class ActionType(Enum):
     NO_ACTION = 0
     ASSIGN_TO_VERSION = 1
     COMMENT = 2
+    INELIGIBLE = 3
 
 @dataclass
 class Action:
@@ -99,9 +100,9 @@ class FixVersionManager:
         is_eligible, ineligibility_reason = self.is_issue_eligible(issue)
         if not is_eligible:
             return Action(
-                action_type=ActionType.NO_ACTION,
+                action_type=ActionType.INELIGIBLE,
                 issue=issue,
-                fix_version=None,
+                fix_version=next_fix_version,
                 comment=None,
                 reason=ineligibility_reason,
             )
