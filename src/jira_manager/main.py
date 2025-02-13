@@ -174,6 +174,8 @@ def _apply_action_with_prompt(action: Action, version_manager: FixVersionManager
         version_manager: The version manager to use for applying the action
     """
     if action.action_type != ActionType.NO_ACTION:
+        if action.action_type == ActionType.INELIGIBLE:
+            print(f"NOTE: This action is ineligible: {action.reason}")
         if input("Apply this action? (y/N): ").lower() == 'y':
             response = version_manager.apply_action(action)
             if response.success:
