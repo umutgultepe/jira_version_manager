@@ -104,3 +104,15 @@ def test_get_unreleased_versions(client, mock_jira, mock_version_response, mock_
     assert version.id == mock_project_version.id
     assert version.description == mock_project_version.description
     assert version.release_date == mock_project_version.release_date
+
+def test_assign_fix_version(client, mock_jira, mock_story, mock_project_version):
+    """Test assigning a fix version to an issue."""
+    # Call the method
+    client.assign_fix_version(mock_story, mock_project_version)
+    
+    # Verify JIRA API was called correctly
+    mock_issue = mock_jira.issue.return_value
+    mock_jira.issue.assert_called_once_with(mock_story.key)
+    mock_issue.update.assert_called_once_with(
+        fields={'fixVersions': [{'id': mock_project_version.id}]}
+    )

@@ -24,6 +24,12 @@ class Action:
     def get_due_date(self) -> datetime.date:
         return self.issue.due_date
 
+@dataclass
+class ActionResponse:
+    action: Action
+    success: bool
+    error_message: Optional[str]
+
 class FixVersionManager:
     """Manages operations on JIRA fix versions."""
     
@@ -105,6 +111,21 @@ class FixVersionManager:
             comment=None,
             reason=None,
         )
+
+    def apply_action(self, action: Action) -> ActionResponse:
+        """
+        Apply an action to a JIRA issue.
+        
+        Args:
+            action: The action to apply
+        """
+        try:
+            if action.action_type == ActionType.ASSIGN_TO_VERSION:
+                self.jira_client.assign_fix_version(action.issue, action.fix_version)
+                return ActionResponse(success=True, error=None)
+        except Exception as e:
+            return ActionResponse(success=False, error=str(e))
+        
 
     def is_issue_eligible(self, issue: Union[Epic, Story]) -> tuple[bool, Optional[str]]:
         """

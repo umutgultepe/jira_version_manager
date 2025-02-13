@@ -1,7 +1,7 @@
 """
 JIRA API client implementation.
 """
-from typing import List
+from typing import List, Union
 from jira import JIRA
 from datetime import datetime
 
@@ -209,3 +209,22 @@ class JIRAClient:
             due_date=datetime.strptime(issue.fields.duedate, '%Y-%m-%d').date()
             if issue.fields.duedate else None
         ) 
+
+    def assign_fix_version(self, issue: Union[Epic, Story], fix_version: FixVersion) -> None:
+        """
+        Assign a fix version to an issue, replacing any existing fix versions.
+        
+        Args:
+            issue: The issue to update
+            fix_version: The fix version to assign
+            
+        Raises:
+            JIRAError: If there's an error communicating with JIRA
+        """
+        # Create dict with just the fields we want to update
+        update_fields = {
+            'fixVersions': [{'id': fix_version.id}]  # JIRA expects a list of version dicts with IDs
+        }
+        
+        # Update the issue
+        self.jira.issue(issue.key).update(fields=update_fields) 
