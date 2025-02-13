@@ -165,6 +165,64 @@ def print_action(action: Action, indent: str = "") -> None:
         print(f"{indent}  Comment: {action.comment}")
     print()
 
+def _apply_action_with_prompt(action: Action, version_manager: FixVersionManager) -> None:
+    """
+    Prompt user to apply an action and handle the response.
+    
+    Args:
+        action: The action to potentially apply
+        version_manager: The version manager to use for applying the action
+    """
+    if action.action_type != ActionType.NO_ACTION:
+        if input("Apply this action? (y/N): ").lower() == 'y':
+            response = version_manager.apply_action(action)
+            if response.success:
+                print("Successfully applied action")
+            else:
+                print(f"Failed to apply action: {response.error_message}")
+
+def apply_actions_for_epic(epic_key: str) -> None:
+    """List and optionally apply recommended fix version actions for an epic and its stories."""
+    try:
+        client = get_client()
+        project_key = epic_key.split('-')[0]
+        
+        versions = client.get_unreleased_versions(project_key)
+        if not versions:
+            print(f"No unreleased versions found in project {project_key}")
+            return
+            
+        version_manager = FixVersionManager(versions, client)
+        
+        epic = client.get_epic(epic_key)
+        stories = client.get_stories_by_epic(epic_key)
+        
+        print(f"\nRecommended fix version actions for epic {epic_key} and its stories:")
+        print("-" * 70)
+        
+        # Process epic
+        epic_action = version_manager.get_recommended_action(epic)
+        print_action(epic_action)
+        _apply_action_with_prompt(epic_action, version_manager)
+        
+        # Process stories
+        if stories:
+            print("\nStories:")
+            print("-" * 70)
+            for story in stories:
+                story_action = version_manager.get_recommended_action(story)
+                print_action(story_action)
+                _apply_action_with_prompt(story_action, version_manager)
+        else:
+            print("\nNo stories found under this epic")
+            
+    except ValueError as e:
+        print(f"Configuration error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
 def list_recommended_actions_for_epic(epic_key: str) -> None:
     """List recommended fix version actions for an epic and its stories."""
     try:
@@ -206,7 +264,7 @@ def list_recommended_actions_for_project(project_key: str, label: str) -> None:
             print(f"No epics found in project {project_key} with label '{label}'")
             return
             
-        version_manager = FixVersionManager(versions)
+        version_manager = FixVersionManager(versions, client)
         print(f"\nRecommended fix version actions for epics labeled '{label}' in {project_key}:")
         
         for epic in epics:
@@ -254,6 +312,13 @@ def main() -> None:
     list_project_actions_parser.add_argument("project_key", help="JIRA project key")
     list_project_actions_parser.add_argument("label", help="Label to filter epics by")
     
+    # Apply actions command
+    apply_actions_parser = subparsers.add_parser(
+        "apply_actions_for_epic", 
+        help="Apply recommended fix version actions for an epic and its stories"
+    )
+    apply_actions_parser.add_argument("epic_key", help="Epic key (e.g., PROJ-123)")
+    
     args = parser.parse_args()
     
     if args.command == "list_epics":
@@ -266,6 +331,8 @@ def main() -> None:
         list_recommended_actions_for_epic(args.epic_key)
     elif args.command == "list_actions_for_project":
         list_recommended_actions_for_project(args.project_key, args.label)
+    elif args.command == "apply_actions_for_epic":
+        apply_actions_for_epic(args.epic_key)
     else:
         parser.print_help()
         sys.exit(1)

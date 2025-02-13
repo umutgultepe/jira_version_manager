@@ -7,6 +7,7 @@ from .models import FixVersion
 from .models import Epic, Story
 from enum import Enum
 from dataclasses import dataclass
+from .jira_client import JIRAClient
 
 class ActionType(Enum):
     NO_ACTION = 0
@@ -28,12 +29,12 @@ class Action:
 class ActionResponse:
     action: Action
     success: bool
-    error_message: Optional[str]
+    error_message: Optional[str] = None
 
 class FixVersionManager:
     """Manages operations on JIRA fix versions."""
     
-    def __init__(self, fix_versions: List[FixVersion]):
+    def __init__(self, fix_versions: List[FixVersion], jira_client: JIRAClient):
         """
         Initialize with a list of fix versions.
         
@@ -41,6 +42,7 @@ class FixVersionManager:
             fix_versions (List[FixVersion]): List of fix versions to manage
         """
         self.fix_versions = fix_versions 
+        self.jira_client = jira_client
 
     def get_next_fix_version(self, issue: Union[Epic, Story]) -> Optional[FixVersion]:
         """
@@ -122,9 +124,9 @@ class FixVersionManager:
         try:
             if action.action_type == ActionType.ASSIGN_TO_VERSION:
                 self.jira_client.assign_fix_version(action.issue, action.fix_version)
-                return ActionResponse(success=True, error=None)
+                return ActionResponse(action=action, success=True, error_message=None)
         except Exception as e:
-            return ActionResponse(success=False, error=str(e))
+            return ActionResponse(action=action, success=False, error_message=str(e))
         
 
     def is_issue_eligible(self, issue: Union[Epic, Story]) -> tuple[bool, Optional[str]]:
