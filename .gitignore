@@ -32,4 +32,7 @@ ENV/
 *.swo
 
 # Local development
-.env 
+.env
+
+# Local configuration
+src/jira_manager/config/jira_config_local.py 
