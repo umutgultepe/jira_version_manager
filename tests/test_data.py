@@ -1,7 +1,7 @@
 """
 Test data and fixtures for JIRA Manager tests.
 """
-from datetime import datetime
+from datetime import datetime, date
 from unittest.mock import Mock
 
 import pytest
@@ -201,4 +201,52 @@ def mock_version_response():
                 'archived': True
             }
         )
-    ] 
+    ]
+
+@pytest.fixture
+def epic_with_fix_version(mock_project_version) -> Epic:
+    """Create an epic that already has a fix version."""
+    return Epic(
+        project_key="PROJ",
+        key="PROJ-123",
+        summary="Test Epic",
+        description="Epic description",
+        status="In Progress",
+        fix_versions=[mock_project_version],
+        due_date=date(2024, 6, 1)
+    )
+
+@pytest.fixture
+def epic_no_due_date() -> Epic:
+    """Create an epic with no due date."""
+    return Epic(
+        project_key="PROJ",
+        key="PROJ-123",
+        summary="Test Epic",
+        description="Epic description",
+        status="In Progress"
+    )
+
+@pytest.fixture
+def epic_late_due_date() -> Epic:
+    """Create an epic with a due date later than all fix versions."""
+    return Epic(
+        project_key="PROJ",
+        key="PROJ-123",
+        summary="Test Epic",
+        description="Epic description",
+        status="In Progress",
+        due_date=date(2025, 1, 1)
+    )
+
+@pytest.fixture
+def epic_needs_version() -> Epic:
+    """Create an epic that needs a fix version."""
+    return Epic(
+        project_key="PROJ",
+        key="PROJ-123",
+        summary="Test Epic",
+        description="Epic description",
+        status="In Progress",
+        due_date=date(2024, 5, 1)
+    ) 

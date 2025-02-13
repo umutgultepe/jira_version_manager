@@ -23,5 +23,9 @@ from test_data import (  # noqa
     mock_project_version,
     mock_released_version,
     mock_archived_version,
-    mock_version_response
+    mock_version_response,
+    epic_with_fix_version,
+    epic_no_due_date,
+    epic_late_due_date,
+    epic_needs_version
 ) 
