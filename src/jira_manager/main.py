@@ -8,7 +8,7 @@ from datetime import datetime
 from .jira_client import JIRAClient
 from .config import jira_config
 from .fix_version_manager import FixVersionManager, Action, ActionType
-from .models import Epic, Story
+from .models import Epic, Story, FixVersion
 
 def get_client(host: Optional[str] = None, 
                username: Optional[str] = None, 
@@ -183,13 +183,14 @@ def _apply_action_with_prompt(action: Action, version_manager: FixVersionManager
             else:
                 print(f"Failed to apply action: {response.error_message}")
 
-def apply_actions_for_epic(epic_key: str) -> None:
+def apply_actions_for_epic(epic_key: str, versions: Optional[List[FixVersion]] = None) -> None:
     """List and optionally apply recommended fix version actions for an epic and its stories."""
     try:
         client = get_client()
         project_key = epic_key.split('-')[0]
-        
-        versions = client.get_unreleased_versions(project_key)
+        if versions is None:
+            versions = client.get_unreleased_versions(project_key)
+
         if not versions:
             print(f"No unreleased versions found in project {project_key}")
             return
@@ -281,6 +282,36 @@ def list_recommended_actions_for_project(project_key: str, label: str) -> None:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
+def apply_actions_for_project(project_key: str, label: str) -> None:
+    """Apply recommended fix version actions for all epics with a label and their stories."""
+    try:
+        client = get_client()
+        
+        versions = client.get_unreleased_versions(project_key)
+        if not versions:
+            print(f"No unreleased versions found in project {project_key}")
+            return
+            
+        epics = client.get_epics_by_label(project_key, label)
+        if not epics:
+            print(f"No epics found in project {project_key} with label '{label}'")
+            return
+            
+        print(f"\nProcessing fix version actions for epics labeled '{label}' in {project_key}:")
+        
+        for epic in epics:
+            print("\n" + "=" * 70)
+            print(f"Processing epic {epic.key}")
+            print("=" * 70)
+            apply_actions_for_epic(epic.key, versions=versions)
+            
+    except ValueError as e:
+        print(f"Configuration error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
 def main() -> None:
     """Main entry point for the CLI."""
     parser = argparse.ArgumentParser(description="JIRA Project Management Tool")
@@ -321,6 +352,14 @@ def main() -> None:
     )
     apply_actions_parser.add_argument("epic_key", help="Epic key (e.g., PROJ-123)")
     
+    # Apply actions for project command
+    apply_project_actions_parser = subparsers.add_parser(
+        "apply_actions_for_project", 
+        help="Apply recommended fix version actions for all labeled epics and their stories"
+    )
+    apply_project_actions_parser.add_argument("project_key", help="JIRA project key")
+    apply_project_actions_parser.add_argument("label", help="Label to filter epics by")
+    
     args = parser.parse_args()
     
     if args.command == "list_epics":
@@ -335,6 +374,8 @@ def main() -> None:
         list_recommended_actions_for_project(args.project_key, args.label)
     elif args.command == "apply_actions_for_epic":
         apply_actions_for_epic(args.epic_key)
+    elif args.command == "apply_actions_for_project":
+        apply_actions_for_project(args.project_key, args.label)
     else:
         parser.print_help()
         sys.exit(1)
