@@ -94,6 +94,29 @@ def list_stories(epic_key: str) -> None:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
+def list_versions(project_key: str) -> None:
+    """List all unreleased versions in a project with their release dates."""
+    try:
+        client = get_client()
+        versions = client.get_unreleased_versions(project_key)
+        
+        if not versions:
+            print(f"No unreleased versions found in project {project_key}")
+            return
+            
+        print(f"\nUnreleased versions in project {project_key}:")
+        print("-" * 50)
+        for version in versions:
+            release_date = version.release_date.strftime("%Y-%m-%d") if version.release_date else "No release date"
+            print(f"{version.name}: {version.description or 'No description'} (Release: {release_date})")
+            
+    except ValueError as e:
+        print(f"Configuration error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
 def main() -> None:
     """Main entry point for the CLI."""
     parser = argparse.ArgumentParser(description="JIRA Project Management Tool")
@@ -108,12 +131,18 @@ def main() -> None:
     list_stories_parser = subparsers.add_parser("list_stories", help="List stories under an epic")
     list_stories_parser.add_argument("epic_key", help="Epic key (e.g., PROJ-123)")
     
+    # List versions command
+    list_versions_parser = subparsers.add_parser("list_versions", help="List unreleased versions in a project")
+    list_versions_parser.add_argument("project_key", help="JIRA project key")
+    
     args = parser.parse_args()
     
     if args.command == "list_epics":
         list_epics(args.project_key, args.label)
     elif args.command == "list_stories":
         list_stories(args.epic_key)
+    elif args.command == "list_versions":
+        list_versions(args.project_key)
     else:
         parser.print_help()
         sys.exit(1)

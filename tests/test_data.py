@@ -135,4 +135,70 @@ def mock_story(mock_story_response):
             for v in mock_story_response.fields.fixVersions
         ],
         due_date=datetime.strptime(mock_story_response.fields.duedate, '%Y-%m-%d')
-    ) 
+    )
+
+@pytest.fixture
+def mock_project_version() -> FixVersion:
+    """Create an unreleased JIRA version."""
+    return FixVersion(
+        id="10001",
+        name="v2.0",
+        description="Second Release",
+        release_date=datetime.strptime("2024-06-30", "%Y-%m-%d").date()
+    )
+
+@pytest.fixture
+def mock_released_version() -> FixVersion:
+    """Create a released JIRA version."""
+    return FixVersion(
+        id="10000",
+        name="v1.0",
+        description="First Release",
+        release_date=datetime.strptime("2024-01-31", "%Y-%m-%d").date()
+    )
+
+@pytest.fixture
+def mock_archived_version() -> FixVersion:
+    """Create an archived JIRA version."""
+    return FixVersion(
+        id="9999",
+        name="v0.9",
+        description="Beta Release",
+        release_date=datetime.strptime("2023-12-31", "%Y-%m-%d").date()
+    )
+
+@pytest.fixture
+def mock_version_response():
+    """Create mock JIRA API responses for versions."""
+    return [
+        Mock(
+            **{
+                'id': "10001",
+                'name': "v2.0",
+                'description': "Second Release",
+                'releaseDate': "2024-06-30",
+                'released': False,
+                'archived': False
+            }
+        ),
+        Mock(
+            **{
+                'id': "10000",
+                'name': "v1.0",
+                'description': "First Release",
+                'releaseDate': "2024-01-31",
+                'released': True,
+                'archived': False
+            }
+        ),
+        Mock(
+            **{
+                'id': "9999",
+                'name': "v0.9",
+                'description': "Beta Release",
+                'releaseDate': "2023-12-31",
+                'released': False,
+                'archived': True
+            }
+        )
+    ] 

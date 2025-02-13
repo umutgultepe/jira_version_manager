@@ -84,3 +84,23 @@ def test_get_stories_by_epic(client, mock_jira, mock_story_response, mock_story)
     # Verify the response
     assert len(stories) == 1
     assert stories[0] == mock_story
+
+def test_get_unreleased_versions(client, mock_jira, mock_version_response, mock_project_version):
+    """Test getting unreleased versions from a project."""
+    # Setup mock response
+    mock_jira.project_versions.return_value = mock_version_response
+    
+    # Call the method
+    versions = client.get_unreleased_versions("PROJ")
+    
+    # Verify project_versions was called with correct project key
+    mock_jira.project_versions.assert_called_once_with("PROJ")
+    
+    # Verify the response
+    assert len(versions) == 1
+    version = versions[0]
+    
+    # Verify individual fields except name
+    assert version.id == mock_project_version.id
+    assert version.description == mock_project_version.description
+    assert version.release_date == mock_project_version.release_date

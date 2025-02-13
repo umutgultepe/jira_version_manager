@@ -147,3 +147,39 @@ class JIRAClient:
             stories.append(story)
         
         return stories 
+
+    def get_unreleased_versions(self, project_key: str) -> List[FixVersion]:
+        """
+        Retrieve all unreleased fix versions for a project.
+        
+        Args:
+            project_key (str): The project key (e.g., 'PROJ')
+            
+        Returns:
+            List[FixVersion]: List of unreleased FixVersion objects
+            
+        Raises:
+            JIRAError: If there's an error communicating with JIRA
+        """
+        versions = self.jira.project_versions(project_key)
+        
+        unreleased_versions = []
+        print(versions)
+        for version in versions:
+            # Skip if version is released or archived
+            if getattr(version, 'released', False) or getattr(version, 'archived', False):
+                continue
+
+            print(version)
+            print(version.name)
+            
+            fix_version = FixVersion(
+                id=version.id,
+                name=version.name,
+                description=getattr(version, 'description', None),
+                release_date=datetime.strptime(version.releaseDate, '%Y-%m-%d').date()
+                if hasattr(version, 'releaseDate') else None
+            )
+            unreleased_versions.append(fix_version)
+        
+        return unreleased_versions 
