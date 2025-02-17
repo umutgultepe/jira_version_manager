@@ -43,7 +43,7 @@ class JIRAClient:
         # Search for issues matching our criteria
         issues = self.jira.search_issues(
             jql,
-            fields='summary,description,status,assignee,fixVersions,duedate,issuetype'
+            fields='summary,description,status,assignee,fixVersions,duedate,issuetype,customfield_10014'
         )
         
         epics = []
@@ -69,7 +69,7 @@ class JIRAClient:
         jql = f'parent = {epic_key} AND issuetype = Story'
         issues = self.jira.search_issues(
             jql,
-            fields='summary,description,status,assignee,fixVersions,customfield_10016,priority,created,updated,duedate,issuetype'  # 10016 is story points
+            fields='summary,description,status,assignee,fixVersions,customfield_10016,priority,created,updated,duedate,issuetype,customfield_10014'  # 10016 is story points
         )
         
         stories = []
@@ -162,6 +162,12 @@ class JIRAClient:
             return None
         return datetime.strptime(due_date_str, '%Y-%m-%d').date()
 
+    def _parse_start_date(self, start_date_str: Optional[str]) -> Optional[datetime.date]:
+        """Parse a JIRA start date string into a date object."""
+        if not start_date_str:
+            return None
+        return datetime.strptime(start_date_str, '%Y-%m-%d').date()
+
     def _create_issue_from_response(self, issue, project_key: str = None) -> Union[Epic, Story]:
         """
         Create an Epic or Story object from a JIRA issue response.
@@ -176,6 +182,7 @@ class JIRAClient:
         assignee = self._create_user_from_assignee(issue.fields)
         fix_versions = self._create_fix_versions_from_field(issue.fields)
         due_date = self._parse_due_date(issue.fields.duedate)
+        start_date = self._parse_start_date(getattr(issue.fields, 'customfield_10014', None))
         
         common_args = {
             'project_key': project_key or issue.key.split('-')[0],
@@ -185,7 +192,8 @@ class JIRAClient:
             'status': issue.fields.status.name,
             'assignee': assignee,
             'fix_versions': fix_versions,
-            'due_date': due_date
+            'due_date': due_date,
+            'start_date': start_date
         }
         
         if issue.fields.issuetype.name == 'Epic':

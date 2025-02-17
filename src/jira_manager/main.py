@@ -65,7 +65,7 @@ def list_epics(project_key: str, label: str) -> None:
         print(f"\nEpics in project {project_key} with label '{label}':")
         print("-" * 50)
         for epic in epics:
-            print(f"{epic.key}: {epic.summary}")
+            print(f"{epic.key}: {epic.summary}, {epic.start_date}, {epic.due_date}")
             
     except ValueError as e:
         print(f"Configuration error: {e}", file=sys.stderr)
@@ -88,7 +88,7 @@ def list_stories(epic_key: str) -> None:
         print("-" * 50)
         for story in stories:
             due_date = story.due_date.strftime("%Y-%m-%d") if story.due_date else "No due date"
-            print(f"{story.key}: {story.summary} (Due: {due_date})")
+            print(f"{story.key}: {story.summary} (Due: {due_date}, Start: {story.start_date})")
             
     except ValueError as e:
         print(f"Configuration error: {e}", file=sys.stderr)

@@ -23,35 +23,24 @@ class FixVersion:
     release_date: Optional[datetime] = None
 
 @dataclass
-class Epic:
-    """Represents a JIRA Epic."""
+class Issue:
+    """Base class for JIRA issues."""
     project_key: str
     key: str
     summary: str
-    description: Optional[str] = None
-    status: str = "To Do"
-    assignee: Optional[User] = None
-    fix_versions: List[FixVersion] = None
-    due_date: Optional[datetime] = None
-    
-    def __post_init__(self):
-        if self.fix_versions is None:
-            self.fix_versions = []
+    description: Optional[str]
+    status: str
+    assignee: Optional[User]
+    fix_versions: List[FixVersion]
+    due_date: Optional[datetime.date] = None
+    start_date: Optional[datetime.date] = None
 
 @dataclass
-class Story:
-    """Represents a JIRA Story/Issue."""
-    project_key: str
-    key: str
-    summary: str
-    epic: Optional[Epic] = None
-    description: Optional[str] = None
-    status: str = "To Do"
-    assignee: Optional[User] = None
-    fix_versions: List[FixVersion] = None
-    due_date: Optional[datetime] = None
-    reporter: Optional[User] = None
-    
-    def __post_init__(self):
-        if self.fix_versions is None:
-            self.fix_versions = [] 
+class Epic(Issue):
+    """Represents a JIRA epic."""
+    pass
+
+@dataclass
+class Story(Issue):
+    """Represents a JIRA story."""
+    pass 

@@ -69,7 +69,7 @@ class FixVersionManager:
         # Return version with earliest release date
         return min(valid_versions, key=lambda v: v.release_date)
 
-    def get_recommended_action(self, issue: Union[Epic, Story]) -> Action:
+    def get_recommended_action(self, issue: Union[Epic, Story], parent_epic: Optional[Epic] = None) -> Action:
         if issue.fix_versions:
             return Action(
                 action_type=ActionType.NO_ACTION,
