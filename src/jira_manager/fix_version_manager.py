@@ -32,6 +32,7 @@ class ActionResponse:
     success: bool
     error_message: Optional[str] = None
 
+
 class FixVersionManager:
     """Manages operations on JIRA fix versions."""
     
@@ -150,7 +151,7 @@ class FixVersionManager:
             return False, f"Status is {issue.status}"
         
         # Check for ineligible keywords in name
-        ineligible_keywords = {"spike", "investigation", "research", "design", "1-pager", "one pager"}
+        ineligible_keywords = {"spike", "investigation", "research", "design", "1-pager", "one pager", "operational", "oncall"}
         if any(keyword in issue.summary.lower() for keyword in ineligible_keywords):
             return False, f"Summary contains ineligible keyword: {issue.summary}"
         
