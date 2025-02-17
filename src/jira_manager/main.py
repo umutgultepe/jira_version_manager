@@ -156,6 +156,7 @@ def print_action(action: Action, indent: str = "") -> None:
     """
     issue_type = "Epic" if isinstance(action.issue, Epic) else "Story"
     print(f"{indent}{issue_type} {action.issue.key}: {action.issue.summary}")
+    print(f"{indent}  URL: {jira_config.JIRA_HOST}/browse/{action.issue.key}")
     
     if action.action_type == ActionType.NO_ACTION:
         print(f"{indent}  Action: No action needed ({action.reason})")
@@ -359,6 +360,30 @@ def render_release_manifest() -> None:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
+def apply_actions(label: str) -> None:
+    """
+    Apply recommended fix version actions for all labeled epics across all configured projects.
+    
+    Args:
+        label: Label to filter epics by
+    """
+    try:
+        if not jira_config.PROJECT_KEYS:
+            print("No projects configured. Please add PROJECT_KEYS to your configuration.")
+            return
+            
+        for project_key in jira_config.PROJECT_KEYS:
+            print(f"\nProcessing project {project_key}:")
+            print("=" * 70)
+            apply_actions_for_project(project_key, label)
+            
+    except ValueError as e:
+        print(f"Configuration error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
 def main() -> None:
     """Main entry point for the CLI."""
     parser = argparse.ArgumentParser(description="JIRA Project Management Tool")
@@ -420,6 +445,13 @@ def main() -> None:
         help="Generate a release manifest for all configured projects"
     )
     
+    # Apply actions across all projects command
+    apply_all_actions_parser = subparsers.add_parser(
+        "apply_actions",
+        help="Apply recommended fix version actions for labeled epics across all configured projects"
+    )
+    apply_all_actions_parser.add_argument("label", help="Label to filter epics by")
+    
     args = parser.parse_args()
     
     if args.command == "list_epics":
@@ -440,6 +472,8 @@ def main() -> None:
         get_project_issues_for_next_fix_version(args.project_key)
     elif args.command == "render_release_manifest":
         render_release_manifest()
+    elif args.command == "apply_actions":
+        apply_actions(args.label)
     else:
         parser.print_help()
         sys.exit(1)
