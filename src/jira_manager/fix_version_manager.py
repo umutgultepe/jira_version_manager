@@ -80,13 +80,22 @@ class FixVersionManager:
             )
 
         if not issue.due_date:
-            return Action(
-                action_type=ActionType.NO_ACTION, 
-                issue=issue,
-                fix_version=None, 
-                comment=None, 
-                reason="No due date",
-            )
+            if self._issue_started(parent_epic):
+                return Action(
+                    action_type=ActionType.COMMENT, 
+                    issue=issue,
+                    fix_version=None, 
+                    comment="Please set the due date for this story",
+                    reason="Epic started without a due date on the story",
+                )
+            else:
+                return Action(
+                    action_type=ActionType.NO_ACTION, 
+                    issue=issue,
+                    fix_version=None, 
+                    comment=None, 
+                    reason="No due date",
+                )
 
         next_fix_version = self.get_next_fix_version(issue)
         if not next_fix_version:
