@@ -45,9 +45,9 @@ class ReleaseRenderer:
         
         # Write header
         writer.writerow([
-            "Assignee Name", "Assignee Email", "Assignee Timezone",
-            "Issue Key", "Issue Summary", "Issue URL", "Project Key",
-            "Fix Version", "Release Date"
+            "Project Timezone", "Assignee Name", "Assignee Email", 
+            "Issue Key", "Issue Summary", "Issue URL",
+            "Fix Version", "Release Date", "Manager Email"
         ])
         
         for project_key in project_keys:
@@ -58,6 +58,10 @@ class ReleaseRenderer:
     def _get_project_timezone(self, project_key: str) -> str:
         """Get timezone for a project from configuration."""
         return jira_config.PROJECT_TO_TIMEZONE.get(project_key)
+    
+    def _get_project_manager(self, project_key: str) -> str:
+        """Get manager's email for a project from configuration."""
+        return jira_config.PROJECT_TO_MANAGER.get(project_key)
 
     def _render_release_manifest_for_project(self, project_key: str, writer: csv.writer) -> None:
         """
@@ -90,8 +94,9 @@ class ReleaseRenderer:
             )
         )
         
-        # Get project timezone
+        # Get project info
         project_timezone = self._get_project_timezone(project_key)
+        manager_email = self._get_project_manager(project_key)
         
         # Write issues to CSV
         for issue in sorted_issues:
@@ -101,14 +106,14 @@ class ReleaseRenderer:
             issue_url = f"{self.jira_client.server_url}/browse/{issue.key}"
             
             writer.writerow([
+                project_timezone,
                 assignee_name,
                 assignee_email,
-                project_timezone,  # Use project timezone instead of user timezone
                 issue.key,
                 issue.summary,
                 issue_url,
-                project_key,
                 next_version.name,
-                next_version.release_date.strftime("%Y-%m-%d") if next_version.release_date else ""
+                next_version.release_date.strftime("%Y-%m-%d") if next_version.release_date else "",
+                manager_email
             ])
         
