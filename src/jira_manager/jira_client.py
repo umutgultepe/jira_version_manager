@@ -255,3 +255,16 @@ class JIRAClient:
             return getattr(user, 'timeZone', None)
         except:
             return None 
+
+    def comment(self, issue_key: str, comment_text: str) -> None:
+        """
+        Add a comment to a JIRA issue.
+        
+        Args:
+            issue_key: The issue key (e.g., 'PROJ-123')
+            comment_text: The text of the comment to add
+            
+        Raises:
+            JIRAError: If there's an error communicating with JIRA
+        """
+        self.jira.add_comment(issue_key, comment_text) 

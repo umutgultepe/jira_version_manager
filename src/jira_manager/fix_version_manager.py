@@ -137,6 +137,9 @@ class FixVersionManager:
             if action.action_type == ActionType.ASSIGN_TO_VERSION:
                 self.jira_client.assign_fix_version(action.issue, action.fix_version)
                 return ActionResponse(action=action, success=True, error_message=None)
+            elif action.action_type == ActionType.COMMENT:
+                self.jira_client.comment(action.issue.key, action.comment)
+                return ActionResponse(action=action, success=True, error_message=None)
         except Exception as e:
             return ActionResponse(action=action, success=False, error_message=str(e))
         

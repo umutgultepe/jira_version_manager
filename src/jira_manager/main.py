@@ -386,6 +386,26 @@ def apply_actions(label: str) -> None:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
+def comment(issue_key: str, comment_text: str) -> None:
+    """
+    Add a comment to a JIRA issue.
+    
+    Args:
+        issue_key: The issue key (e.g., 'PROJ-123')
+        comment_text: The text of the comment
+    """
+    try:
+        client = get_client()
+        client.comment(issue_key, comment_text)
+        print(f"Successfully added comment to {issue_key}")
+            
+    except ValueError as e:
+        print(f"Configuration error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
 def main() -> None:
     """Main entry point for the CLI."""
     parser = argparse.ArgumentParser(description="JIRA Project Management Tool")
@@ -454,6 +474,14 @@ def main() -> None:
     )
     apply_all_actions_parser.add_argument("label", help="Label to filter epics by")
     
+    # Comment command
+    comment_parser = subparsers.add_parser(
+        "comment",
+        help="Add a comment to a JIRA issue"
+    )
+    comment_parser.add_argument("issue_key", help="Issue key (e.g., PROJ-123)")
+    comment_parser.add_argument("comment_text", help="Text of the comment to add")
+    
     args = parser.parse_args()
     
     if args.command == "list_epics":
@@ -476,6 +504,8 @@ def main() -> None:
         render_release_manifest()
     elif args.command == "apply_actions":
         apply_actions(args.label)
+    elif args.command == "comment":
+        comment(args.issue_key, args.comment_text)
     else:
         parser.print_help()
         sys.exit(1)
