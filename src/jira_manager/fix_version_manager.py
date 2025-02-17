@@ -80,7 +80,6 @@ class FixVersionManager:
             )
 
         if not issue.due_date:
-            print(parent_epic, parent_epic.start_date)
             if self._issue_started(parent_epic):
                 return Action(
                     action_type=ActionType.COMMENT, 
@@ -164,7 +163,7 @@ class FixVersionManager:
             return False, f"Status is {issue.status}"
         
         # Check for ineligible keywords in name
-        ineligible_keywords = {"spike", "investigation", "research", "design", "1-pager", "one pager", "operational", "oncall"}
+        ineligible_keywords = {"spike", "investigation", "research", "design", "1-pager", "one pager", "operational", "oncall", "discovery", "ktlo"}
         if any(keyword in issue.summary.lower() for keyword in ineligible_keywords):
             return False, f"Summary contains ineligible keyword: {issue.summary}"
         
