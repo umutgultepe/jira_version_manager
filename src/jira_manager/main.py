@@ -9,6 +9,7 @@ from .jira_client import JIRAClient
 from .config import jira_config
 from .fix_version_manager import FixVersionManager, Action, ActionType
 from .models import Epic, Story, FixVersion
+from .release_renderer import ReleaseRenderer
 
 def get_client(host: Optional[str] = None, 
                username: Optional[str] = None, 
@@ -322,43 +323,11 @@ def get_project_issues_for_next_fix_version(project_key: str) -> None:
     """
     try:
         client = get_client()
+        renderer = ReleaseRenderer(client)
         
-        # Get unreleased versions
-        versions = client.get_unreleased_versions(project_key)
-        if not versions:
-            print(f"No unreleased versions found in project {project_key}")
-            return
-            
-        # Find the next version (closest future date)
-        today = datetime.now().date()
-        future_versions = [v for v in versions if v.release_date and v.release_date > today]
-        if not future_versions:
-            print(f"No future versions found in project {project_key}")
-            return
-            
-        next_version = min(future_versions, key=lambda v: v.release_date)
-        print(f"\nIssues for version {next_version.name} (Release date: {next_version.release_date})")
-        print("=" * 120)
-        
-        # Get and sort issues
-        issues = client.get_issues_for_fix_version(next_version)
-        sorted_issues = sorted(
-            issues,
-            key=lambda x: (
-                x.assignee.display_name.lower() if x.assignee else "zzz",  # Unassigned goes to end
-                x.key
-            )
-        )
-        
-        # Print issues
-        for issue in sorted_issues:
-            assignee_name = issue.assignee.display_name if issue.assignee else "<unassigned>"
-            assignee_email = issue.assignee.email if issue.assignee else ""
-            assignee_timezone = client._get_user_timezone(issue.assignee.account_id) if issue.assignee else ""
-            
-            issue_url = f"{jira_config.JIRA_HOST}/browse/{issue.key}"
-            
-            print(f"{assignee_name:<30} {assignee_email:<30} {assignee_timezone:<20} {issue.key:<15} {issue.summary:<50} {issue_url}")
+        # Get and print the CSV content
+        csv_content = renderer.render_release_manifest([project_key])
+        print(csv_content)
             
     except ValueError as e:
         print(f"Configuration error: {e}", file=sys.stderr)

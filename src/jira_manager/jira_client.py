@@ -17,6 +17,7 @@ class JIRAClient:
             username (str): JIRA username (usually email)
             api_token (str): JIRA API token
         """
+        self.server_url = server_url
         self.jira = JIRA(
             server=server_url,
             basic_auth=(username, api_token)
