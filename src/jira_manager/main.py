@@ -336,6 +336,29 @@ def get_project_issues_for_next_fix_version(project_key: str) -> None:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
+def render_release_manifest() -> None:
+    """
+    Generate a release manifest for all configured projects.
+    """
+    try:
+        if not jira_config.PROJECT_KEYS:
+            print("No projects configured. Please add PROJECT_KEYS to your configuration.")
+            return
+            
+        client = get_client()
+        renderer = ReleaseRenderer(client)
+        
+        # Get and print the CSV content for all projects
+        csv_content = renderer.render_release_manifest(jira_config.PROJECT_KEYS)
+        print(csv_content)
+            
+    except ValueError as e:
+        print(f"Configuration error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
 def main() -> None:
     """Main entry point for the CLI."""
     parser = argparse.ArgumentParser(description="JIRA Project Management Tool")
@@ -391,6 +414,12 @@ def main() -> None:
     )
     next_version_issues_parser.add_argument("project_key", help="JIRA project key")
     
+    # Render release manifest command
+    render_manifest_parser = subparsers.add_parser(
+        "render_release_manifest",
+        help="Generate a release manifest for all configured projects"
+    )
+    
     args = parser.parse_args()
     
     if args.command == "list_epics":
@@ -409,6 +438,8 @@ def main() -> None:
         apply_actions_for_project(args.project_key, args.label)
     elif args.command == "get_project_issues_for_next_fix_version":
         get_project_issues_for_next_fix_version(args.project_key)
+    elif args.command == "render_release_manifest":
+        render_release_manifest()
     else:
         parser.print_help()
         sys.exit(1)
