@@ -80,6 +80,7 @@ class FixVersionManager:
             )
 
         if not issue.due_date:
+            print(parent_epic, parent_epic.start_date)
             if self._issue_started(parent_epic):
                 return Action(
                     action_type=ActionType.COMMENT, 
@@ -165,3 +166,18 @@ class FixVersionManager:
             return False, f"Summary contains ineligible keyword: {issue.summary}"
         
         return True, None
+
+    def _issue_started(self, issue: Optional[Union[Epic, Story]]) -> bool:
+        """
+        Check if an issue has started based on its start date.
+        
+        Args:
+            issue: The issue to check, can be None
+            
+        Returns:
+            bool: True if the issue has a start date in the past, False otherwise
+        """
+        if not issue or not issue.start_date:
+            return False
+        
+        return issue.start_date <= datetime.datetime.now().date()

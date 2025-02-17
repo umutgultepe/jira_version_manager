@@ -126,7 +126,7 @@ class JIRAClient:
         """
         issue = self.jira.issue(
             epic_key,
-            fields='summary,description,status,assignee,fixVersions,duedate,issuetype'
+            fields='summary,description,status,assignee,fixVersions,duedate,issuetype,customfield_10014'
         )
         return self._create_issue_from_response(issue) 
 

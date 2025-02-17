@@ -141,7 +141,7 @@ def _print_recommendations(version_manager: FixVersionManager, epic: Epic, stori
         print(f"\n{indent}Stories:")
         print(f"{indent}" + "-" * 70)
         for story in stories:
-            story_action = version_manager.get_recommended_action(story)
+            story_action = version_manager.get_recommended_action(story, epic)
             print_action(story_action, indent)
     else:
         print(f"\n{indent}No stories found under this epic")
@@ -160,6 +160,8 @@ def print_action(action: Action, indent: str = "") -> None:
     
     if action.action_type == ActionType.NO_ACTION:
         print(f"{indent}  Action: No action needed ({action.reason})")
+    elif action.action_type == ActionType.COMMENT:
+        print(f"{indent}  Action: Comment ({action.comment})")
     elif action.action_type == ActionType.ASSIGN_TO_VERSION:
         print(f"{indent}  Action: Assign to version {action.fix_version.name}, due date is {action.get_due_date()}")
     elif action.action_type == ActionType.INELIGIBLE:
@@ -216,7 +218,7 @@ def apply_actions_for_epic(epic_key: str, versions: Optional[List[FixVersion]] =
             print("\nStories:")
             print("-" * 70)
             for story in stories:
-                story_action = version_manager.get_recommended_action(story)
+                story_action = version_manager.get_recommended_action(story, epic)
                 print_action(story_action)
                 _apply_action_with_prompt(story_action, version_manager)
         else:
@@ -240,7 +242,7 @@ def list_recommended_actions_for_epic(epic_key: str) -> None:
             print(f"No unreleased versions found in project {project_key}")
             return
             
-        version_manager = FixVersionManager(versions)
+        version_manager = FixVersionManager(versions, client)
         epic = client.get_epic(epic_key)
         stories = client.get_stories_by_epic(epic_key)
         
