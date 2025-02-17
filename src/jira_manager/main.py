@@ -170,16 +170,20 @@ def print_action(action: Action, indent: str = "") -> None:
         print(f"{indent}  Comment: {action.comment}")
     print()
 
-def _apply_action_with_prompt(action: Action, version_manager: FixVersionManager) -> None:
+def _apply_action_with_prompt(action: Action, version_manager: FixVersionManager, skip_ineligible: bool = False) -> None:
     """
     Prompt user to apply an action and handle the response.
     
     Args:
         action: The action to potentially apply
         version_manager: The version manager to use for applying the action
+        skip_ineligible: If True, skip actions marked as ineligible
     """
     if action.action_type != ActionType.NO_ACTION:
         if action.action_type == ActionType.INELIGIBLE:
+            if skip_ineligible:
+                print(f"Skipping ineligible action: {action.reason}")
+                return
             print(f"NOTE: This action is ineligible: {action.reason}")
         if input("Apply this action? (y/N): ").lower() == 'y':
             response = version_manager.apply_action(action)
@@ -188,7 +192,7 @@ def _apply_action_with_prompt(action: Action, version_manager: FixVersionManager
             else:
                 print(f"Failed to apply action: {response.error_message}")
 
-def apply_actions_for_epic(epic_key: str, versions: Optional[List[FixVersion]] = None) -> None:
+def apply_actions_for_epic(epic_key: str, versions: Optional[List[FixVersion]] = None, skip_ineligible: bool = False) -> None:
     """List and optionally apply recommended fix version actions for an epic and its stories."""
     try:
         client = get_client()
@@ -211,7 +215,7 @@ def apply_actions_for_epic(epic_key: str, versions: Optional[List[FixVersion]] =
         # Process epic
         epic_action = version_manager.get_recommended_action(epic)
         print_action(epic_action)
-        _apply_action_with_prompt(epic_action, version_manager)
+        _apply_action_with_prompt(epic_action, version_manager, skip_ineligible)
         
         # Process stories
         if stories:
@@ -220,7 +224,7 @@ def apply_actions_for_epic(epic_key: str, versions: Optional[List[FixVersion]] =
             for story in stories:
                 story_action = version_manager.get_recommended_action(story, epic)
                 print_action(story_action)
-                _apply_action_with_prompt(story_action, version_manager)
+                _apply_action_with_prompt(story_action, version_manager, skip_ineligible)
         else:
             print("\nNo stories found under this epic")
             
@@ -287,7 +291,7 @@ def list_recommended_actions_for_project(project_key: str, label: str) -> None:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-def apply_actions_for_project(project_key: str, label: str) -> None:
+def apply_actions_for_project(project_key: str, label: str, skip_ineligible: bool = False) -> None:
     """Apply recommended fix version actions for all epics with a label and their stories."""
     try:
         client = get_client()
@@ -308,7 +312,7 @@ def apply_actions_for_project(project_key: str, label: str) -> None:
             print("\n" + "=" * 70)
             print(f"Processing epic {epic.key}")
             print("=" * 70)
-            apply_actions_for_epic(epic.key, versions=versions)
+            apply_actions_for_epic(epic.key, versions=versions, skip_ineligible=skip_ineligible)
             
     except ValueError as e:
         print(f"Configuration error: {e}", file=sys.stderr)
@@ -362,12 +366,13 @@ def render_release_manifest() -> None:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-def apply_actions(label: str) -> None:
+def apply_actions(label: str, skip_ineligible: bool = False) -> None:
     """
     Apply recommended fix version actions for all labeled epics across all configured projects.
     
     Args:
         label: Label to filter epics by
+        skip_ineligible: If True, skip actions marked as ineligible
     """
     try:
         if not jira_config.PROJECT_KEYS:
@@ -377,7 +382,7 @@ def apply_actions(label: str) -> None:
         for project_key in jira_config.PROJECT_KEYS:
             print(f"\nProcessing project {project_key}:")
             print("=" * 70)
-            apply_actions_for_project(project_key, label)
+            apply_actions_for_project(project_key, label, skip_ineligible)
             
     except ValueError as e:
         print(f"Configuration error: {e}", file=sys.stderr)
@@ -473,6 +478,11 @@ def main() -> None:
         help="Apply recommended fix version actions for labeled epics across all configured projects"
     )
     apply_all_actions_parser.add_argument("label", help="Label to filter epics by")
+    apply_all_actions_parser.add_argument(
+        "--skip-ineligible",
+        action="store_true",
+        help="Skip actions marked as ineligible"
+    )
     
     # Comment command
     comment_parser = subparsers.add_parser(
@@ -503,7 +513,7 @@ def main() -> None:
     elif args.command == "render_release_manifest":
         render_release_manifest()
     elif args.command == "apply_actions":
-        apply_actions(args.label)
+        apply_actions(args.label, args.skip_ineligible)
     elif args.command == "comment":
         comment(args.issue_key, args.comment_text)
     else:
