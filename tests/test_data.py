@@ -59,39 +59,28 @@ def mock_epic_response(mock_assignee, mock_fix_version):
         fields=Mock(
             summary="Test Epic",
             description="Epic description",
-            status=Name(name="In Progress"),
+            status=Mock(name="In Progress"),
             assignee=mock_assignee,
             fixVersions=[mock_fix_version],
             duedate="2024-12-31",
-            issuetype=Name(name="Epic")
+            issuetype=Mock(name="Epic"),
+            customfield_10014="2024-01-15"  # Start date
         )
     )
 
 @pytest.fixture
-def mock_epic(mock_epic_response):
-    """Create an Epic object matching the mock response."""
+def mock_epic(mock_assignee, mock_fix_version) -> Epic:
+    """Create a mock Epic instance."""
     return Epic(
         project_key="PROJ",
-        key=mock_epic_response.key,
-        summary=mock_epic_response.fields.summary,
-        description=mock_epic_response.fields.description,
-        status=mock_epic_response.fields.status.name,
-        assignee=User(
-            account_id=mock_epic_response.fields.assignee.accountId,
-            email=mock_epic_response.fields.assignee.emailAddress,
-            display_name=mock_epic_response.fields.assignee.displayName,
-            active=mock_epic_response.fields.assignee.active
-        ),
-        fix_versions=[
-            FixVersion(
-                id=v.id,
-                name=v.name,
-                description=v.description,
-                release_date=datetime.strptime(v.releaseDate, "%Y-%m-%d").date()
-            )
-            for v in mock_epic_response.fields.fixVersions
-        ],
-        due_date=datetime.strptime(mock_epic_response.fields.duedate, "%Y-%m-%d").date()
+        key="PROJ-123",
+        summary="Test Epic",
+        description="Epic description",
+        status="In Progress",
+        assignee=mock_assignee,
+        fix_versions=[mock_fix_version],
+        due_date=date(2024, 12, 31),
+        start_date=date(2024, 1, 15)
     )
 
 @pytest.fixture
@@ -116,40 +105,29 @@ def mock_story_response(mock_assignee, mock_fix_version):
         fields=Mock(
             summary="Test Story",
             description="Story description",
-            status=Name(name="In Progress"),
+            status=Mock(name="In Progress"),
             assignee=mock_assignee,
             fixVersions=[mock_fix_version],
             duedate="2024-12-31",
-            issuetype=Name(name="Story"),
-            customfield_10016=5
+            issuetype=Mock(name="Story"),
+            customfield_10014="2024-02-01",  # Start date
+            customfield_10016=5  # Story points
         )
     )
 
 @pytest.fixture
-def mock_story(mock_story_response):
-    """Create a Story object matching the mock response."""
+def mock_story(mock_assignee, mock_fix_version) -> Story:
+    """Create a mock Story instance."""
     return Story(
         project_key="PROJ",
-        key=mock_story_response.key,
-        summary=mock_story_response.fields.summary,
-        description=mock_story_response.fields.description,
-        status=mock_story_response.fields.status.name,
-        assignee=User(
-            account_id=mock_story_response.fields.assignee.accountId,
-            email=mock_story_response.fields.assignee.emailAddress,
-            display_name=mock_story_response.fields.assignee.displayName,
-            active=mock_story_response.fields.assignee.active
-        ),
-        fix_versions=[
-            FixVersion(
-                id=v.id,
-                name=v.name,
-                description=v.description,
-                release_date=datetime.strptime(v.releaseDate, "%Y-%m-%d").date()
-            )
-            for v in mock_story_response.fields.fixVersions
-        ],
-        due_date=datetime.strptime(mock_story_response.fields.duedate, '%Y-%m-%d').date()
+        key="PROJ-456",
+        summary="Test Story",
+        description="Story description",
+        status="In Progress",
+        assignee=mock_assignee,
+        fix_versions=[mock_fix_version],
+        due_date=date(2024, 12, 31),
+        start_date=date(2024, 2, 1)
     )
 
 @pytest.fixture
@@ -227,6 +205,7 @@ def epic_with_fix_version(mock_project_version) -> Epic:
         summary="Test Epic",
         description="Epic description",
         status="In Progress",
+        assignee=None,
         fix_versions=[mock_project_version],
         due_date=date(2024, 6, 1)
     )
@@ -239,7 +218,10 @@ def epic_no_due_date() -> Epic:
         key="PROJ-123",
         summary="Test Epic",
         description="Epic description",
-        status="In Progress"
+        status="In Progress",
+        assignee=None,
+        fix_versions=[],
+        due_date=None
     )
 
 @pytest.fixture
@@ -251,6 +233,8 @@ def epic_late_due_date() -> Epic:
         summary="Test Epic",
         description="Epic description",
         status="In Progress",
+        assignee=None,
+        fix_versions=[],
         due_date=date(2025, 1, 1)
     )
 
@@ -263,5 +247,7 @@ def epic_needs_version() -> Epic:
         summary="Test Epic",
         description="Epic description",
         status="In Progress",
+        assignee=None,
+        fix_versions=[],
         due_date=date(2024, 5, 1)
     ) 

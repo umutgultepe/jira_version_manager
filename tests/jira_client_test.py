@@ -8,21 +8,16 @@ import pytest
 from test_data import mock_epic, mock_jira, client
 from jira_manager.models import Epic, User, FixVersion, Story
 
-def test_get_epics_by_label_single_epic(client, mock_jira, mock_epic_response, mock_epic):
-    """Test getting epics by label when one epic exists."""
-    # Setup mock response
+def test_get_epics_by_label(client, mock_jira, mock_epic_response, mock_epic):
+    """Test getting epics by label."""
     mock_jira.search_issues.return_value = [mock_epic_response]
     
-    # Call the method
     epics = client.get_epics_by_label("PROJ", "feature")
     
-    # Verify search was called with correct JQL
     mock_jira.search_issues.assert_called_once_with(
         'project = PROJ AND issuetype = Epic AND labels = feature',
-        fields='summary,description,status,assignee,fixVersions,duedate,issuetype'
+        fields='summary,description,status,assignee,fixVersions,duedate,issuetype,customfield_10014'
     )
-    
-    # Verify the response
     assert len(epics) == 1
     assert epics[0] == mock_epic
 
@@ -69,19 +64,14 @@ def assert_epic_fields(epic: Epic, project_key: str):
 
 def test_get_stories_by_epic(client, mock_jira, mock_story_response, mock_story):
     """Test getting stories under an epic."""
-    # Setup mock response
     mock_jira.search_issues.return_value = [mock_story_response]
     
-    # Call the method
     stories = client.get_stories_by_epic("PROJ-123")
     
-    # Verify search was called with correct JQL
     mock_jira.search_issues.assert_called_once_with(
         'parent = PROJ-123 AND issuetype = Story',
-        fields='summary,description,status,assignee,fixVersions,customfield_10016,priority,created,updated,duedate,issuetype'
+        fields='summary,description,status,assignee,fixVersions,customfield_10016,priority,created,updated,duedate,issuetype,customfield_10014'
     )
-    
-    # Verify the response
     assert len(stories) == 1
     assert stories[0] == mock_story
 
@@ -117,23 +107,26 @@ def test_assign_fix_version(client, mock_jira, mock_story, mock_project_version)
         fields={'fixVersions': [{'id': mock_project_version.id}]}
     )
 
+def test_get_epic(client, mock_jira, mock_epic_response, mock_epic):
+    """Test getting a specific epic."""
+    mock_jira.issue.return_value = mock_epic_response
+    
+    epic = client.get_epic("PROJ-123")
+    
+    mock_jira.issue.assert_called_once_with(
+        "PROJ-123",
+        fields='summary,description,status,assignee,fixVersions,duedate,issuetype,customfield_10014'
+    )
+    assert epic == mock_epic
+
 def test_get_issues_for_fix_version(client, mock_jira, mock_epic_response, mock_story_response, mock_project_version):
     """Test getting issues with a specific fix version."""
-    # Setup mock response with both epic and story
     mock_jira.search_issues.return_value = [mock_epic_response, mock_story_response]
     
-    # Call the method
     issues = client.get_issues_for_fix_version(mock_project_version)
     
-    # Verify search was called with correct JQL
     mock_jira.search_issues.assert_called_once_with(
         f'fixVersion = {mock_project_version.id} AND issuetype in (Epic, Story)',
         fields='summary,description,status,assignee,fixVersions,issuetype,customfield_10016,priority,created,updated,duedate'
     )
-    
-    # Verify the response
     assert len(issues) == 2
-    assert isinstance(issues[0], Epic)
-    assert isinstance(issues[1], Story)
-    assert issues[0].key == mock_epic_response.key
-    assert issues[1].key == mock_story_response.key

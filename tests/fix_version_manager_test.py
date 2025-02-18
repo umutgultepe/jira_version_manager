@@ -53,41 +53,61 @@ def test_get_recommended_action_needs_version(epic_needs_version, mock_project_v
 
 @pytest.mark.parametrize("issue,expected", [
     (
-        Epic(
-            project_key="PROJ", 
-            key="PROJ-1", 
-            summary="Test Epic",
-            status="Open"
+        Story(
+            project_key="PROJ",
+            key="PROJ-123",
+            summary="Normal story",
+            description="A regular story",
+            status="To Do",
+            assignee=None,
+            fix_versions=[],
+            due_date=None,
+            start_date=None
         ),
-        (True, "Issue is an Epic")
+        (True, None)
     ),
     (
         Story(
             project_key="PROJ",
-            key="PROJ-2",
-            summary="Test Story",
-            status="Won't Fix"
+            key="PROJ-123",
+            summary="Investigation spike",
+            description="A spike",
+            status="To Do",
+            assignee=None,
+            fix_versions=[],
+            due_date=None,
+            start_date=None
+        ),
+        (False, "Summary contains ineligible keyword: Investigation spike")
+    ),
+    (
+        Story(
+            project_key="PROJ",
+            key="PROJ-123",
+            summary="Normal story",
+            description="A regular story",
+            status="Won't Fix",
+            assignee=None,
+            fix_versions=[],
+            due_date=None,
+            start_date=None
         ),
         (False, "Status is Won't Fix")
     ),
     (
-        Story(
+        Epic(
             project_key="PROJ",
-            key="PROJ-3",
-            summary="Investigation: Database Performance",
-            status="Open"
+            key="PROJ-123",
+            summary="Epic with spike in name",
+            description="An epic",
+            status="To Do",
+            assignee=None,
+            fix_versions=[],
+            due_date=None,
+            start_date=None
         ),
-        (False, "Summary contains ineligible keyword: Investigation: Database Performance")
-    ),
-    (
-        Story(
-            project_key="PROJ",
-            key="PROJ-4",
-            summary="Normal Story",
-            status="In Progress"
-        ),
-        (True, None)
-    ),
+        (True, "Issue is an Epic")
+    )
 ])
 def test_is_issue_eligible(issue, expected, mock_jira):
     """Test issue eligibility checks."""
