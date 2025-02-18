@@ -25,7 +25,7 @@ class ReleaseRenderer:
         output_buffer = StringIO()
         csv_writer = csv.writer(
             output_buffer,
-            delimiter=',',
+            delimiter="\t",
             quotechar='"',
             quoting=csv.QUOTE_MINIMAL
         )
