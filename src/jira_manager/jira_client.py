@@ -132,14 +132,14 @@ class JIRAClient:
 
     def _create_user_from_assignee(self, assignee_field) -> Optional[User]:
         """Create a User object from a JIRA assignee field."""
-        if not (hasattr(assignee_field, 'assignee') and assignee_field.assignee):
+        if not assignee_field:
             return None
         
         return User(
-            account_id=assignee_field.assignee.accountId,
-            email=getattr(assignee_field.assignee, 'emailAddress', None),
-            display_name=assignee_field.assignee.displayName,
-            active=assignee_field.assignee.active
+            account_id=assignee_field.accountId,
+            email=getattr(assignee_field, 'emailAddress', None),
+            display_name=assignee_field.displayName,
+            active=assignee_field.active
         )
 
     def _create_fix_versions_from_field(self, versions_field) -> List[FixVersion]:
@@ -179,7 +179,7 @@ class JIRAClient:
         Returns:
             Union[Epic, Story]: Created issue object
         """
-        assignee = self._create_user_from_assignee(issue.fields)
+        assignee = self._create_user_from_assignee(issue.fields.assignee)
         fix_versions = self._create_fix_versions_from_field(issue.fields)
         due_date = self._parse_due_date(issue.fields.duedate)
         start_date = self._parse_start_date(getattr(issue.fields, 'customfield_10014', None))
@@ -196,7 +196,7 @@ class JIRAClient:
             'start_date': start_date
         }
         
-        if issue.fields.issuetype.name == 'Epic':
+        if getattr(issue.fields.issuetype, 'name', None) == 'Epic':
             return Epic(**common_args)
         else:
             return Story(**common_args)
@@ -237,7 +237,7 @@ class JIRAClient:
         jql = f'fixVersion = {fix_version.id} AND issuetype in (Epic, Story)'
         issues = self.jira.search_issues(
             jql,
-            fields='summary,description,status,assignee,fixVersions,issuetype,customfield_10016,priority,created,updated,duedate'
+            fields='summary,description,status,assignee,fixVersions,issuetype,customfield_10016,priority,created,updated,duedate,customfield_10014'
         )
         
         result = []

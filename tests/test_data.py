@@ -44,26 +44,30 @@ def mock_assignee():
 @pytest.fixture
 def mock_fix_version():
     """Create a mock JIRA version."""
-    return Mock(
-        id="10000",
-        name="v1.0",
-        description="First Release",
-        releaseDate="2024-12-31"
-    )
+    version = Mock()
+    version.id = "10000"
+    version.name = "v1.0"
+    version.description = "First Release"
+    version.releaseDate = "2024-12-31"
+    return version
 
 @pytest.fixture
 def mock_epic_response(mock_assignee, mock_fix_version):
     """Create a mock JIRA API response for an epic."""
+    status = Mock()
+    status.name = "In Progress"
+    issue_type = Mock()
+    issue_type.name = "Epic"
     return Mock(
         key="PROJ-123",
         fields=Mock(
             summary="Test Epic",
             description="Epic description",
-            status=Mock(name="In Progress"),
+            status=status,
             assignee=mock_assignee,
             fixVersions=[mock_fix_version],
             duedate="2024-12-31",
-            issuetype=Mock(name="Epic"),
+            issuetype=issue_type,
             customfield_10014="2024-01-15"  # Start date
         )
     )
@@ -100,18 +104,22 @@ def mock_story_fields(mock_assignee, mock_fix_version):
 @pytest.fixture
 def mock_story_response(mock_assignee, mock_fix_version):
     """Create a mock JIRA API response for a story."""
+    status = Mock()
+    status.name = "In Progress"
+    issue_type = Mock()
+    issue_type.name = "Story"
     return Mock(
         key="PROJ-456",
         fields=Mock(
             summary="Test Story",
             description="Story description",
-            status=Mock(name="In Progress"),
+            status=status,
             assignee=mock_assignee,
             fixVersions=[mock_fix_version],
             duedate="2024-12-31",
-            issuetype=Mock(name="Story"),
+            issuetype=issue_type,
             customfield_10014="2024-02-01",  # Start date
-            customfield_10016=5  # Story points
+            customfield_10016=5.0  # Story points
         )
     )
 
@@ -163,36 +171,40 @@ def mock_archived_version() -> FixVersion:
 @pytest.fixture
 def mock_version_response():
     """Create mock JIRA API responses for versions."""
+    def create_version(id, name, description, release_date, released, archived):
+        version = Mock()
+        version.id = id
+        version.name = name
+        version.description = description
+        version.releaseDate = release_date
+        version.released = released
+        version.archived = archived
+        return version
+
     return [
-        Mock(
-            **{
-                'id': "10001",
-                'name': "v2.0",
-                'description': "Second Release",
-                'releaseDate': "2024-06-30",
-                'released': False,
-                'archived': False
-            }
+        create_version(
+            "10001",
+            "v2.0",
+            "Second Release",
+            "2024-06-30",
+            False,
+            False
         ),
-        Mock(
-            **{
-                'id': "10000",
-                'name': "v1.0",
-                'description': "First Release",
-                'releaseDate': "2024-01-31",
-                'released': True,
-                'archived': False
-            }
+        create_version(
+            "10000",
+            "v1.0",
+            "First Release",
+            "2024-01-31",
+            True,
+            False
         ),
-        Mock(
-            **{
-                'id': "9999",
-                'name': "v0.9",
-                'description': "Beta Release",
-                'releaseDate': "2023-12-31",
-                'released': False,
-                'archived': True
-            }
+        create_version(
+            "9999",
+            "v0.9",
+            "Beta Release",
+            "2023-12-31",
+            False,
+            True
         )
     ]
 
