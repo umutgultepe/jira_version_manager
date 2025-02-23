@@ -268,3 +268,22 @@ class JIRAClient:
             JIRAError: If there's an error communicating with JIRA
         """
         self.jira.add_comment(issue_key, comment_text) 
+
+    def add_label(self, issue_key: str, label: str) -> None:
+        """
+        Add a label to a JIRA issue.
+        
+        Args:
+            issue_key (str): The issue key (e.g., 'PROJ-123')
+            label (str): The label to add
+            
+        Raises:
+            JIRAError: If there's an error communicating with JIRA
+        """
+        issue = self.jira.issue(issue_key)
+        current_labels = getattr(issue.fields, 'labels', [])
+        
+        # Only add the label if it's not already present
+        if label not in current_labels:
+            current_labels.append(label)
+            issue.update(fields={'labels': current_labels}) 

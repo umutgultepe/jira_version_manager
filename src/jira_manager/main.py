@@ -436,6 +436,95 @@ def comment(issue_key: str, comment_text: str) -> None:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
+def propagate_labels_to_stories_for_project(project_key: str, label: str) -> None:
+    """
+    Propagate a label from epics to their stories in a project.
+    
+    Args:
+        project_key (str): The JIRA project key
+        label (str): The label to propagate
+    """
+    try:
+        client = get_client()
+        
+        # Get epics with the specified label
+        epics = client.get_epics_by_label(project_key, label)
+        if not epics:
+            print(f"No epics found in project {project_key} with label '{label}'")
+            return
+            
+        print(f"\nPropagating label '{label}' to stories in project {project_key}:")
+        print("=" * 70)
+        
+        total_stories = 0
+        labeled_stories = 0
+        
+        # Process each epic
+        for epic in epics:
+            print(f"\nProcessing epic {epic.key}: {epic.summary}")
+            print("-" * 70)
+            
+            # Get stories under the epic
+            stories = client.get_stories_by_epic(epic.key)
+            if not stories:
+                print("No stories found under this epic")
+                continue
+                
+            total_stories += len(stories)
+            
+            # Add label to each story
+            for story in stories:
+                try:
+                    client.add_label(story.key, label)
+                    print(f"Added label '{label}' to {story.key}: {story.summary}")
+                    labeled_stories += 1
+                except Exception as e:
+                    print(f"Failed to add label to {story.key}: {e}")
+        
+        # Print summary
+        print("\nSummary:")
+        print("-" * 70)
+        print(f"Processed {len(epics)} epic(s)")
+        print(f"Found {total_stories} story/stories")
+        print(f"Successfully labeled {labeled_stories} story/stories")
+        if labeled_stories < total_stories:
+            print(f"Failed to label {total_stories - labeled_stories} story/stories")
+            
+    except ValueError as e:
+        print(f"Configuration error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+def propagate_labels_for_all(label: str) -> None:
+    """
+    Propagate a label from epics to their stories across all configured projects.
+    
+    Args:
+        label (str): The label to propagate
+    """
+    try:
+        if not jira_config.PROJECT_KEYS:
+            print("No projects configured. Please add PROJECT_KEYS to your configuration.")
+            return
+            
+        total_projects = len(jira_config.PROJECT_KEYS)
+        print(f"\nPropagating label '{label}' across {total_projects} project(s):")
+        print("=" * 70)
+        
+        for project_key in jira_config.PROJECT_KEYS:
+            print(f"\nProject {project_key}:")
+            print("-" * 70)
+            propagate_labels_to_stories_for_project(project_key, label)
+            
+    except ValueError as e:
+        print(f"Configuration error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
 def main() -> None:
     """Main entry point for the CLI."""
     parser = argparse.ArgumentParser(description="JIRA Project Management Tool")
@@ -526,6 +615,21 @@ def main() -> None:
     comment_parser.add_argument("issue_key", help="Issue key (e.g., PROJ-123)")
     comment_parser.add_argument("comment_text", help="Text of the comment to add")
     
+    # Propagate labels command
+    propagate_labels_parser = subparsers.add_parser(
+        "propagate_labels",
+        help="Propagate labels from epics to their stories in a project"
+    )
+    propagate_labels_parser.add_argument("project_key", help="JIRA project key")
+    propagate_labels_parser.add_argument("label", help="Label to propagate")
+    
+    # Propagate labels across all projects command
+    propagate_all_labels_parser = subparsers.add_parser(
+        "propagate_labels_for_all",
+        help="Propagate labels from epics to their stories across all configured projects"
+    )
+    propagate_all_labels_parser.add_argument("label", help="Label to propagate")
+    
     args = parser.parse_args()
     
     if args.command == "list_epics":
@@ -550,6 +654,10 @@ def main() -> None:
         apply_actions(args.label, args.skip_ineligible)
     elif args.command == "comment":
         comment(args.issue_key, args.comment_text)
+    elif args.command == "propagate_labels":
+        propagate_labels_to_stories_for_project(args.project_key, args.label)
+    elif args.command == "propagate_labels_for_all":
+        propagate_labels_for_all(args.label)
     else:
         parser.print_help()
         sys.exit(1)
